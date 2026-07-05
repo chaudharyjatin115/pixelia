@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Pixelia</string>
+    <string name="tab_photos">Photos</string>
+    <string name="tab_folders">Folders</string>
+    <string name="tab_favourites">Favourites</string>
+    <string name="tab_bin">Bin</string>
+</resources>
