@@ -39,11 +39,14 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.ui.components.FolderPickerDialog
 import com.chaudharyjatin115.pixelia.ui.components.PermissionRationaleScreen
+import com.chaudharyjatin115.pixelia.ui.navigation.FloatingPillBar
 import com.chaudharyjatin115.pixelia.ui.navigation.FolderAction
 import com.chaudharyjatin115.pixelia.ui.navigation.FolderActionBar
 import com.chaudharyjatin115.pixelia.ui.navigation.GalleryDestination
 import com.chaudharyjatin115.pixelia.ui.navigation.GalleryNavigationBar
 import com.chaudharyjatin115.pixelia.ui.navigation.GalleryNavigationRail
+import com.chaudharyjatin115.pixelia.ui.screens.bin.BinScreen
+import com.chaudharyjatin115.pixelia.ui.screens.favourites.FavouritesScreen
 import com.chaudharyjatin115.pixelia.ui.screens.folders.FolderDetailScreen
 import com.chaudharyjatin115.pixelia.ui.screens.folders.FoldersScreen
 import com.chaudharyjatin115.pixelia.ui.screens.photos.PhotosScreen
@@ -51,27 +54,18 @@ import com.chaudharyjatin115.pixelia.viewmodel.GalleryViewModel
 
 @Composable
 fun GalleryApp(
-    initialViewUri: android.net.Uri? = null,
-    initialViewMimeType: String? = null,
     modifier: Modifier = Modifier,
     viewModel: GalleryViewModel = viewModel()
 ) {
     val context = LocalContext.current
-
-    LaunchedEffect(initialViewUri) {
-        if (initialViewUri != null) {
-            viewModel.openExternalUri(initialViewUri, initialViewMimeType)
-        }
-    }
     val hazeState = remember { HazeState() }
     val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 840 && configuration.screenHeightDp >= 600
+    val isTablet = configuration.screenWidthDp >= 600
 
-    val selectedDestination by viewModel.selectedDestination.collectAsState()
     val hasStoragePermission by viewModel.hasStoragePermission.collectAsState()
     val isPartialAccess by viewModel.isPartialAccess.collectAsState()
+    val selectedDestination by viewModel.selectedDestination.collectAsState()
     val activeFolder by viewModel.activeFolder.collectAsState()
-
     val selectedMediaIds by viewModel.selectedMediaIds.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val activeFolderAction by viewModel.activeFolderAction.collectAsState()
@@ -80,8 +74,11 @@ fun GalleryApp(
     val groupedMedia by viewModel.groupedMedia.collectAsState()
     val allMedia by viewModel.allMedia.collectAsState()
     val folders by viewModel.folders.collectAsState()
+    val favorites by viewModel.favorites.collectAsState()
+    val binMedia by viewModel.binMedia.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
+    // Permission check helper
     fun checkPermissions() {
         val hasFull = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
@@ -108,6 +105,10 @@ fun GalleryApp(
         checkPermissions()
     }
 
+    LaunchedEffect(Unit) {
+        checkPermissions()
+    }
+
     fun requestPermissions() {
         val permissionsToRequest = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> arrayOf(
@@ -124,10 +125,6 @@ fun GalleryApp(
             )
         }
         permissionLauncher.launch(permissionsToRequest)
-    }
-
-    LaunchedEffect(Unit) {
-        checkPermissions()
     }
 
     if (activeFolder != null) {
@@ -176,6 +173,8 @@ fun GalleryApp(
                             allMedia = allMedia,
                             groupedMedia = groupedMedia,
                             folders = folders,
+                            favorites = favorites,
+                            binMedia = binMedia,
                             isLoading = isLoading,
                             isPartialAccess = isPartialAccess,
                             isSelectionMode = isSelectionMode,
@@ -200,6 +199,8 @@ fun GalleryApp(
                             allMedia = allMedia,
                             groupedMedia = groupedMedia,
                             folders = folders,
+                            favorites = favorites,
+                            binMedia = binMedia,
                             isLoading = isLoading,
                             isPartialAccess = isPartialAccess,
                             isSelectionMode = isSelectionMode,
@@ -210,63 +211,65 @@ fun GalleryApp(
                     }
 
                     val isFolderOrSelection = activeFolder != null || isSelectionMode
-                    val currentFolder = activeFolder
-                    val activeFolderItems = remember(currentFolder, allMedia) {
-                        if (currentFolder != null) viewModel.getItemsForFolder(currentFolder) else emptyList()
-                    }
-                    val currentTargetItems = if (activeFolder != null) {
-                        activeFolderItems
-                    } else {
-                        allMedia
-                    }
 
                     AnimatedVisibility(
-                        visible = true,
+                        visible = !isFolderOrSelection,
                         enter = slideInVertically(
                             initialOffsetY = { it / 2 },
                             animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeIn(tween(200)),
+                        ) + fadeIn(tween(180)),
                         exit = slideOutVertically(
                             targetOffsetY = { it / 2 },
                             animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeOut(tween(160)),
+                        ) + fadeOut(tween(140)),
                         modifier = Modifier.align(Alignment.BottomCenter)
                     ) {
-                        if (isFolderOrSelection) {
-                            FolderActionBar(
-                                activeAction = activeFolderAction,
-                                onActionClick = { action ->
-                                    viewModel.setActiveFolderAction(action)
-                                    if (selectedMediaIds.isEmpty()) {
-                                        viewModel.startSelectionMode()
-                                    } else {
-                                        when (action) {
-                                            FolderAction.SHARE -> {
-                                                viewModel.shareSelectedItems(context, currentTargetItems)
-                                            }
-                                            FolderAction.DELETE -> {
-                                                viewModel.moveToBinSelectedItems(currentTargetItems)
-                                            }
-                                            FolderAction.COPY -> {
-                                                showFolderPickerForAction = FolderAction.COPY
-                                            }
-                                            FolderAction.MOVE -> {
-                                                showFolderPickerForAction = FolderAction.MOVE
-                                            }
-                                        }
+                        GalleryNavigationBar(
+                            selectedDestination = selectedDestination,
+                            onDestinationSelected = { dest ->
+                                viewModel.selectDestination(dest)
+                            },
+                            hazeState = hazeState
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = isFolderOrSelection,
+                        enter = slideInVertically(
+                            initialOffsetY = { it / 2 },
+                            animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeIn(tween(180)),
+                        exit = slideOutVertically(
+                            targetOffsetY = { it / 2 },
+                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeOut(tween(140)),
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    ) {
+                        FolderActionBar(
+                            activeAction = activeFolderAction,
+                            onActionClick = { action ->
+                                val currentTargetItems = if (activeFolder != null) {
+                                    viewModel.getItemsForActiveFolder()
+                                } else {
+                                    allMedia
+                                }
+                                when (action) {
+                                    FolderAction.SHARE -> {
+                                        viewModel.shareSelectedItems(context, currentTargetItems)
                                     }
-                                },
-                                hazeState = hazeState
-                            )
-                        } else {
-                            GalleryNavigationBar(
-                                selectedDestination = selectedDestination,
-                                onDestinationSelected = { dest ->
-                                    viewModel.selectDestination(dest)
-                                },
-                                hazeState = hazeState
-                            )
-                        }
+                                    FolderAction.DELETE -> {
+                                        viewModel.moveToBinSelectedItems(currentTargetItems)
+                                    }
+                                    FolderAction.COPY -> {
+                                        showFolderPickerForAction = FolderAction.COPY
+                                    }
+                                    FolderAction.MOVE -> {
+                                        showFolderPickerForAction = FolderAction.MOVE
+                                    }
+                                }
+                            },
+                            hazeState = hazeState
+                        )
                     }
                 }
             }
@@ -279,20 +282,17 @@ fun GalleryApp(
                 allMedia
             }
             FolderPickerDialog(
-                title = if (showFolderPickerForAction == FolderAction.COPY) "Copy to Folder" else "Move to Folder",
                 folders = folders,
+                title = if (showFolderPickerForAction == FolderAction.COPY) "Copy to Folder" else "Move to Folder",
+                onDismiss = { showFolderPickerForAction = null },
                 onFolderSelected = { targetFolder ->
                     val action = showFolderPickerForAction
                     showFolderPickerForAction = null
                     if (action == FolderAction.COPY) {
-                        viewModel.copySelectedItemsToFolder(currentTargetItems, targetFolder)
+                        viewModel.copySelectedToFolder(context, targetFolder, currentTargetItems)
                     } else if (action == FolderAction.MOVE) {
-                        viewModel.moveSelectedItemsToFolder(currentTargetItems, targetFolder)
+                        viewModel.moveSelectedToFolder(context, targetFolder, currentTargetItems)
                     }
-                },
-                onDismissRequest = {
-                    showFolderPickerForAction = null
-                    viewModel.setActiveFolderAction(FolderAction.SHARE)
                 }
             )
         }
@@ -307,6 +307,8 @@ private fun MainContentScreen(
     allMedia: List<com.chaudharyjatin115.pixelia.domain.model.MediaItem>,
     groupedMedia: List<com.chaudharyjatin115.pixelia.domain.model.DateGroupedMedia>,
     folders: List<com.chaudharyjatin115.pixelia.domain.model.MediaFolder>,
+    favorites: List<com.chaudharyjatin115.pixelia.domain.model.MediaItem>,
+    binMedia: List<com.chaudharyjatin115.pixelia.domain.model.MediaItem>,
     isLoading: Boolean,
     isPartialAccess: Boolean,
     isSelectionMode: Boolean,
@@ -389,7 +391,22 @@ private fun MainContentScreen(
                             hazeState = hazeState
                         )
                     }
-                    else -> {}
+                    GalleryDestination.FAVOURITES -> {
+                        FavouritesScreen(
+                            favourites = favorites,
+                            onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
+                            hazeState = hazeState
+                        )
+                    }
+                    GalleryDestination.BIN -> {
+                        BinScreen(
+                            binMedia = binMedia,
+                            onRestore = { item -> viewModel.restoreFromBin(item) },
+                            onPermanentDelete = { item -> viewModel.permanentlyDelete(item) },
+                            onEmptyBin = { viewModel.emptyBin() },
+                            hazeState = hazeState
+                        )
+                    }
                 }
             }
         }
