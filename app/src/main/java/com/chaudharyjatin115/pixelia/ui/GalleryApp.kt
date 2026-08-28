@@ -2,6 +2,7 @@ package com.chaudharyjatin115.pixelia.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,6 +15,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -21,7 +23,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.chrisbanes.haze.HazeState
@@ -50,11 +58,14 @@ import com.chaudharyjatin115.pixelia.ui.screens.favourites.FavouritesScreen
 import com.chaudharyjatin115.pixelia.ui.screens.folders.FolderDetailScreen
 import com.chaudharyjatin115.pixelia.ui.screens.folders.FoldersScreen
 import com.chaudharyjatin115.pixelia.ui.screens.photos.PhotosScreen
+import com.chaudharyjatin115.pixelia.ui.screens.viewer.PhotoViewerScreen
 import com.chaudharyjatin115.pixelia.viewmodel.GalleryViewModel
 
 @Composable
 fun GalleryApp(
     modifier: Modifier = Modifier,
+    initialViewUri: Uri? = null,
+    initialViewMimeType: String? = null,
     viewModel: GalleryViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -70,6 +81,11 @@ fun GalleryApp(
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val activeFolderAction by viewModel.activeFolderAction.collectAsState()
     var showFolderPickerForAction by remember { mutableStateOf<FolderAction?>(null) }
+    var showBatchDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    val isViewerOpen by viewModel.isViewerOpen.collectAsState()
+    val viewerMediaList by viewModel.viewerMediaList.collectAsState()
+    val viewerInitialIndex by viewModel.viewerInitialIndex.collectAsState()
 
     val groupedMedia by viewModel.groupedMedia.collectAsState()
     val allMedia by viewModel.allMedia.collectAsState()
@@ -77,6 +93,25 @@ fun GalleryApp(
     val favorites by viewModel.favorites.collectAsState()
     val binMedia by viewModel.binMedia.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+
+    LaunchedEffect(initialViewUri) {
+        if (initialViewUri != null) {
+            viewModel.openExternalUri(initialViewUri, initialViewMimeType)
+        }
+    }
+
+    val pendingDeleteRequest by viewModel.pendingDeleteRequest.collectAsState()
+    val systemDeleteLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        viewModel.onPermanentDeleteResult(result.resultCode == android.app.Activity.RESULT_OK)
+    }
+
+    LaunchedEffect(pendingDeleteRequest) {
+        pendingDeleteRequest?.let { req ->
+            systemDeleteLauncher.launch(req)
+        }
+    }
 
     // Permission check helper
     fun checkPermissions() {
@@ -127,21 +162,23 @@ fun GalleryApp(
         permissionLauncher.launch(permissionsToRequest)
     }
 
-    if (activeFolder != null) {
-        BackHandler {
-            if (isSelectionMode) {
-                viewModel.clearSelection()
-            } else {
-                viewModel.closeFolder()
+    if (!isViewerOpen) {
+        if (activeFolder != null) {
+            BackHandler {
+                if (isSelectionMode) {
+                    viewModel.clearSelection()
+                } else {
+                    viewModel.closeFolder()
+                }
             }
-        }
-    } else if (isSelectionMode) {
-        BackHandler {
-            viewModel.clearSelection()
-        }
-    } else if (selectedDestination != GalleryDestination.PHOTOS) {
-        BackHandler {
-            viewModel.selectDestination(GalleryDestination.PHOTOS)
+        } else if (isSelectionMode) {
+            BackHandler {
+                viewModel.clearSelection()
+            }
+        } else if (selectedDestination != GalleryDestination.PHOTOS) {
+            BackHandler {
+                viewModel.selectDestination(GalleryDestination.PHOTOS)
+            }
         }
     }
 
@@ -153,67 +190,73 @@ fun GalleryApp(
         } else {
             if (isTablet) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    GalleryNavigationRail(
-                        selectedDestination = selectedDestination,
-                        onDestinationSelected = { dest ->
-                            viewModel.selectDestination(dest)
-                        },
-                        hazeState = hazeState
-                    )
+                    if (!isViewerOpen) {
+                        GalleryNavigationRail(
+                            selectedDestination = selectedDestination,
+                            onDestinationSelected = { dest ->
+                                viewModel.selectDestination(dest)
+                            },
+                            hazeState = hazeState
+                        )
+                    }
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize()
                     ) {
-                        MainContentScreen(
-                            activeFolder = activeFolder,
-                            selectedDestination = selectedDestination,
-                            viewModel = viewModel,
-                            allMedia = allMedia,
-                            groupedMedia = groupedMedia,
-                            folders = folders,
-                            favorites = favorites,
-                            binMedia = binMedia,
-                            isLoading = isLoading,
-                            isPartialAccess = isPartialAccess,
-                            isSelectionMode = isSelectionMode,
-                            selectedMediaIds = selectedMediaIds,
-                            onRequestPermissions = { requestPermissions() },
-                            hazeState = hazeState
-                        )
+                        if (!isViewerOpen) {
+                            MainContentScreen(
+                                activeFolder = activeFolder,
+                                selectedDestination = selectedDestination,
+                                viewModel = viewModel,
+                                allMedia = allMedia,
+                                groupedMedia = groupedMedia,
+                                folders = folders,
+                                favorites = favorites,
+                                binMedia = binMedia,
+                                isLoading = isLoading,
+                                isPartialAccess = isPartialAccess,
+                                isSelectionMode = isSelectionMode,
+                                selectedMediaIds = selectedMediaIds,
+                                onRequestPermissions = { requestPermissions() },
+                                hazeState = hazeState
+                            )
+                        }
                     }
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                            .hazeSource(state = hazeState)
-                    ) {
-                        MainContentScreen(
-                            activeFolder = activeFolder,
-                            selectedDestination = selectedDestination,
-                            viewModel = viewModel,
-                            allMedia = allMedia,
-                            groupedMedia = groupedMedia,
-                            folders = folders,
-                            favorites = favorites,
-                            binMedia = binMedia,
-                            isLoading = isLoading,
-                            isPartialAccess = isPartialAccess,
-                            isSelectionMode = isSelectionMode,
-                            selectedMediaIds = selectedMediaIds,
-                            onRequestPermissions = { requestPermissions() },
-                            hazeState = hazeState
-                        )
+                    if (!isViewerOpen) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                                .hazeSource(state = hazeState)
+                        ) {
+                            MainContentScreen(
+                                activeFolder = activeFolder,
+                                selectedDestination = selectedDestination,
+                                viewModel = viewModel,
+                                allMedia = allMedia,
+                                groupedMedia = groupedMedia,
+                                folders = folders,
+                                favorites = favorites,
+                                binMedia = binMedia,
+                                isLoading = isLoading,
+                                isPartialAccess = isPartialAccess,
+                                isSelectionMode = isSelectionMode,
+                                selectedMediaIds = selectedMediaIds,
+                                onRequestPermissions = { requestPermissions() },
+                                hazeState = hazeState
+                            )
+                        }
                     }
 
                     val isFolderOrSelection = activeFolder != null || isSelectionMode
 
                     AnimatedVisibility(
-                        visible = !isFolderOrSelection,
+                        visible = !isViewerOpen && !isFolderOrSelection,
                         enter = slideInVertically(
                             initialOffsetY = { it / 2 },
                             animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
@@ -234,7 +277,7 @@ fun GalleryApp(
                     }
 
                     AnimatedVisibility(
-                        visible = isFolderOrSelection,
+                        visible = !isViewerOpen && isFolderOrSelection,
                         enter = slideInVertically(
                             initialOffsetY = { it / 2 },
                             animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
@@ -258,7 +301,7 @@ fun GalleryApp(
                                         viewModel.shareSelectedItems(context, currentTargetItems)
                                     }
                                     FolderAction.DELETE -> {
-                                        viewModel.moveToBinSelectedItems(currentTargetItems)
+                                        showBatchDeleteConfirmDialog = true
                                     }
                                     FolderAction.COPY -> {
                                         showFolderPickerForAction = FolderAction.COPY
@@ -275,6 +318,45 @@ fun GalleryApp(
             }
         }
 
+        if (showBatchDeleteConfirmDialog) {
+            val currentTargetItems = if (activeFolder != null) {
+                viewModel.getItemsForActiveFolder()
+            } else {
+                allMedia
+            }
+            AlertDialog(
+                onDismissRequest = { showBatchDeleteConfirmDialog = false },
+                title = {
+                    Text(
+                        text = "Move to Bin?",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text("Move ${selectedMediaIds.size} selected items to the Bin?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showBatchDeleteConfirmDialog = false
+                            viewModel.moveToBinSelectedItems(currentTargetItems)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Text("Move to Bin")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showBatchDeleteConfirmDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
         if (showFolderPickerForAction != null) {
             val currentTargetItems = if (activeFolder != null) {
                 viewModel.getItemsForActiveFolder()
@@ -282,18 +364,39 @@ fun GalleryApp(
                 allMedia
             }
             FolderPickerDialog(
-                folders = folders,
                 title = if (showFolderPickerForAction == FolderAction.COPY) "Copy to Folder" else "Move to Folder",
-                onDismiss = { showFolderPickerForAction = null },
+                folders = folders,
                 onFolderSelected = { targetFolder ->
                     val action = showFolderPickerForAction
                     showFolderPickerForAction = null
                     if (action == FolderAction.COPY) {
-                        viewModel.copySelectedToFolder(context, targetFolder, currentTargetItems)
+                        viewModel.copySelectedItemsToFolder(currentTargetItems, targetFolder)
                     } else if (action == FolderAction.MOVE) {
-                        viewModel.moveSelectedToFolder(context, targetFolder, currentTargetItems)
+                        viewModel.moveSelectedItemsToFolder(currentTargetItems, targetFolder)
                     }
-                }
+                },
+                onDismissRequest = { showFolderPickerForAction = null }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isViewerOpen,
+            enter = fadeIn(tween(220)) + scaleIn(
+                initialScale = 0.92f,
+                animationSpec = spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMediumLow)
+            ),
+            exit = fadeOut(tween(160)) + scaleOut(
+                targetScale = 0.94f,
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+            )
+        ) {
+            PhotoViewerScreen(
+                mediaList = viewerMediaList,
+                initialIndex = viewerInitialIndex,
+                onClose = { viewModel.closeViewer() },
+                onToggleFavorite = { item -> viewModel.toggleFavorite(item) },
+                onMoveToBin = { item -> viewModel.moveToBin(item) },
+                onImageEdited = { viewModel.refresh() }
             )
         }
     }
