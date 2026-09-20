@@ -1,0 +1,9 @@
+Pixelia is a fast,clean,and beautiful photo gallery app designed for your Android Device
+
+Why you'll love Pixelia:
+• Opens instantly with zero lag,
+• Extremely compact so it takes virtually no storage space on your phone.
+• Uses Google's Material You Expressive design language with a smooth frosted glass navigation bar.
+• Makes it Easy to browse,organize,star your favorites,or recover accidentally deleted items from the bin.
+• Built-in Photo Editor
+• 100% Private & Offline,No ads,No tracking.

@@ -1,0 +1,21 @@
+Categories:
+  - Multimedia
+License: GPL-3.0-only
+SourceCode: https://github.com/chaudharyjatin115/pixelia
+IssueTracker: https://github.com/chaudharyjatin115/pixelia/issues
+
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: 1.0
+CurrentVersionCode: 1
+
+RepoType: git
+Repo: https://github.com/chaudharyjatin115/pixelia.git
+
+Builds:
+  - versionName: 1.0
+    versionCode: 1
+    commit: HEAD
+    output: app/build/outputs/apk/release/app-release.apk
+    gradle:
+      - yes
