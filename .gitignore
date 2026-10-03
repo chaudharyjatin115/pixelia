@@ -4,9 +4,16 @@
 /.idea/
 .DS_Store
 /build
+/app/build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
 *.jks
 keystore.properties
+
+# F-Droid local build outputs
+/repo/
+/tmp/
+/srclibs/
+/logs/
