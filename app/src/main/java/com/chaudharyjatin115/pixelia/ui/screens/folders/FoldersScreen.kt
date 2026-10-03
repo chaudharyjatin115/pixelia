@@ -83,10 +83,7 @@ enum class FolderSortOption(val displayName: String) {
 @Composable
 fun FoldersScreen(
     folders: List<MediaFolder>,
-    allMedia: List<MediaItem> = emptyList(),
-    getItemsForFolder: ((MediaFolder) -> List<MediaItem>)? = null,
     onFolderClick: (MediaFolder) -> Unit,
-    onPhotoClick: ((MediaItem, List<MediaItem>) -> Unit)? = null,
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null
 ) {

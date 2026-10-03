@@ -8,7 +8,7 @@
 -dontwarn androidx.media3.**
 -dontwarn dev.chrisbanes.haze.**
 
-# Strip verbose/debug logs in release builds to eliminate string allocations, CPU overhead and data leakage
+# Strip isLoggable, verbose, debug, and info logs in release builds to eliminate string allocations, CPU overhead and data leakage
 -assumenosideeffects class android.util.Log {
     public static boolean isLoggable(java.lang.String, int);
     public static int v(...);

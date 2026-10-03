@@ -487,10 +487,7 @@ private fun MainContentScreen(
                     GalleryDestination.FOLDERS -> {
                         FoldersScreen(
                             folders = folders,
-                            allMedia = allMedia,
-                            getItemsForFolder = { folder -> viewModel.getItemsForFolder(folder) },
                             onFolderClick = { folder -> viewModel.openFolder(folder) },
-                            onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
                             hazeState = hazeState
                         )
                     }
