@@ -97,19 +97,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.MediaInfoSheet
 import com.chaudharyjatin115.pixelia.ui.screens.editor.PhotoEditorScreen
-import com.chaudharyjatin115.pixelia.ui.theme.FrostedGlassDefaults
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -133,7 +130,6 @@ fun PhotoViewerScreen(
     BackHandler(onBack = onClose)
 
     val context = LocalContext.current
-    val viewerHazeState = remember { HazeState() }
     val view = LocalView.current
     val isDarkTheme = isSystemInDarkTheme()
     DisposableEffect(isDarkTheme) {
@@ -302,9 +298,7 @@ fun PhotoViewerScreen(
                 HorizontalPager(
                     state = pagerState,
                     userScrollEnabled = !isCurrentPhotoZoomed,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .hazeSource(state = viewerHazeState),
+                    modifier = Modifier.fillMaxSize(),
                     key = { mediaList.getOrNull(it)?.id ?: it }
                 ) { page ->
                     val item = mediaList.getOrNull(page) ?: return@HorizontalPager
@@ -355,9 +349,8 @@ fun PhotoViewerScreen(
                         .fillMaxWidth()
                         .shadow(12.dp, shape = pillShape, spotColor = Color.Black.copy(alpha = 0.35f))
                         .clip(pillShape)
-                        .hazeEffect(state = viewerHazeState, style = FrostedGlassDefaults.photoViewerStyle())
-                        .background(FrostedGlassDefaults.photoViewerBackground())
-                        .border(FrostedGlassDefaults.photoViewerBorder(), shape = pillShape)
+                        .background(Color(0xCC1A1A1E))
+                        .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), shape = pillShape)
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     Row(
@@ -428,9 +421,8 @@ fun PhotoViewerScreen(
                         modifier = Modifier
                             .shadow(14.dp, shape = pillShape, spotColor = Color.Black.copy(alpha = 0.40f))
                             .clip(pillShape)
-                            .hazeEffect(state = viewerHazeState, style = FrostedGlassDefaults.photoViewerStyle())
-                            .background(FrostedGlassDefaults.photoViewerBackground())
-                            .border(FrostedGlassDefaults.photoViewerBorder(), shape = pillShape)
+                            .background(Color(0xCC1A1A1E))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)), shape = pillShape)
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Row(
