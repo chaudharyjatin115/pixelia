@@ -110,10 +110,6 @@ dependencies {
     // EXIF Metadata Inspector
     implementation("androidx.exifinterface:exifinterface:1.4.2")
 
-    // Frosted glass / blur for modern Android navigation bar
-    implementation("dev.chrisbanes.haze:haze:1.3.1")
-    implementation("dev.chrisbanes.haze:haze-materials:1.3.1")
-
     // In-app Video Player with ExoPlayer
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")
