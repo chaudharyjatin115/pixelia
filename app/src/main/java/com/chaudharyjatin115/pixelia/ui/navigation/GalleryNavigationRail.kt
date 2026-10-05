@@ -50,16 +50,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
-import com.chaudharyjatin115.pixelia.ui.theme.FrostedGlassDefaults
 
 /**
  * Adaptive navigation rail for wider screens (tablets, foldables, landscape)
  * maintaining the same expressive pill aesthetic and selective icon visibility.
  */
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun GalleryNavigationRail(
     selectedDestination: GalleryDestination,
@@ -77,12 +72,6 @@ fun GalleryNavigationRail(
     ) {
         val containerShape = RoundedCornerShape(32.dp)
 
-        val hazeModifier = if (hazeState != null) {
-            Modifier.hazeEffect(state = hazeState, style = FrostedGlassDefaults.style())
-        } else {
-            Modifier
-        }
-
         Box(
             modifier = Modifier
                 .shadow(
@@ -91,9 +80,11 @@ fun GalleryNavigationRail(
                     spotColor = Color.Black.copy(alpha = 0.35f)
                 )
                 .clip(containerShape)
-                .then(hazeModifier)
-                .background(FrostedGlassDefaults.containerBackground())
-                .border(FrostedGlassDefaults.border(), shape = containerShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .border(
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                    shape = containerShape
+                )
                 .padding(vertical = 12.dp, horizontal = 8.dp)
         ) {
             Column(
