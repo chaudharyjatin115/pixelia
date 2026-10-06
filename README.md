@@ -44,7 +44,6 @@ Bugs and ideas are welcome in [issues](../../issues). Pull requests too.
 
 ## Credits
 
-Frosted glass effects by [Haze](https://github.com/chrisbanes/haze).
 Mockups built using (https://www.brandbird.app/)
 
 ## License

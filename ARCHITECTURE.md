@@ -39,8 +39,8 @@ Pixelia follows modern Android architecture recommendations, structured into thr
    - Observes MediaStore URI changes using `ContentObserver` for real-time updates.
    - Merges system media with user favorites and soft-deleted bin state stored in `LocalMediaStateStore`.
 
-3. **Material 3 Expressive UI & Frosted Glass (`FloatingPillBar`)**:
-   - Floating pill navigation bar utilizing GPU-accelerated blur (`dev.chrisbanes.haze:haze`).
+3. **Material 3 Expressive UI (`FloatingPillBar`)**:
+   - Floating pill navigation bar with expressive Material 3 container surface styling and smooth pill animations.
    - Adaptive layouts for phone and tablet screens (`GalleryNavigationRail`).
 
 4. **Media Editor (`PhotoEditorScreen`)**:
