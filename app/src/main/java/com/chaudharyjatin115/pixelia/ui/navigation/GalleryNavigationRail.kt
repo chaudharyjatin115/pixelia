@@ -3,7 +3,6 @@ package com.chaudharyjatin115.pixelia.ui.navigation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -49,7 +47,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
 
 /**
  * Adaptive navigation rail for wider screens (tablets, foldables, landscape)
@@ -60,8 +57,7 @@ fun GalleryNavigationRail(
     selectedDestination: GalleryDestination,
     onDestinationSelected: (GalleryDestination) -> Unit,
     modifier: Modifier = Modifier,
-    destinations: List<GalleryDestination> = GalleryDestination.entries,
-    hazeState: HazeState? = null
+    destinations: List<GalleryDestination> = GalleryDestination.entries
 ) {
     Box(
         modifier = modifier
