@@ -38,6 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalConfiguration
 import com.chaudharyjatin115.pixelia.ui.components.FolderPickerDialog
 import com.chaudharyjatin115.pixelia.ui.components.PermissionRationaleScreen
@@ -188,8 +192,7 @@ fun GalleryApp(
                             selectedDestination = selectedDestination,
                             onDestinationSelected = { dest ->
                                 viewModel.selectDestination(dest)
-                            },
-                            hazeState = hazeState
+                            }
                         )
                     }
 
@@ -212,8 +215,7 @@ fun GalleryApp(
                                 isPartialAccess = isPartialAccess,
                                 isSelectionMode = isSelectionMode,
                                 selectedMediaIds = selectedMediaIds,
-                                onRequestPermissions = { requestPermissions() },
-                                hazeState = hazeState
+                                onRequestPermissions = { requestPermissions() }
                             )
                         }
                     }
@@ -239,8 +241,7 @@ fun GalleryApp(
                                 isPartialAccess = isPartialAccess,
                                 isSelectionMode = isSelectionMode,
                                 selectedMediaIds = selectedMediaIds,
-                                onRequestPermissions = { requestPermissions() },
-                                hazeState = null
+                                onRequestPermissions = { requestPermissions() }
                             )
                         }
                     }
@@ -263,8 +264,7 @@ fun GalleryApp(
                             selectedDestination = selectedDestination,
                             onDestinationSelected = { dest ->
                                 viewModel.selectDestination(dest)
-                            },
-                            hazeState = hazeState
+                            }
                         )
                     }
 
@@ -302,8 +302,7 @@ fun GalleryApp(
                                         showFolderPickerForAction = FolderAction.MOVE
                                     }
                                 }
-                            },
-                            hazeState = hazeState
+                            }
                         )
                     }
                 }
@@ -408,8 +407,7 @@ private fun MainContentScreen(
     isPartialAccess: Boolean,
     isSelectionMode: Boolean,
     selectedMediaIds: Set<Long>,
-    onRequestPermissions: () -> Unit,
-    hazeState: HazeState
+    onRequestPermissions: () -> Unit
 ) {
     AnimatedContent(
         targetState = activeFolder,
@@ -438,8 +436,7 @@ private fun MainContentScreen(
                     } else {
                         viewModel.selectAll(folderItems)
                     }
-                },
-                hazeState = hazeState
+                }
             )
         } else {
             AnimatedContent(
@@ -472,22 +469,19 @@ private fun MainContentScreen(
                                 }
                             },
                             onRefresh = { viewModel.refresh() },
-                            onManagePermissions = onRequestPermissions,
-                            hazeState = hazeState
+                            onManagePermissions = onRequestPermissions
                         )
                     }
                     GalleryDestination.FOLDERS -> {
                         FoldersScreen(
                             folders = folders,
-                            onFolderClick = { folder -> viewModel.openFolder(folder) },
-                            hazeState = hazeState
+                            onFolderClick = { folder -> viewModel.openFolder(folder) }
                         )
                     }
                     GalleryDestination.FAVOURITES -> {
                         FavouritesScreen(
                             favourites = favorites,
-                            onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
-                            hazeState = hazeState
+                            onPhotoClick = { item, list -> viewModel.openViewer(item, list) }
                         )
                     }
                     GalleryDestination.BIN -> {
@@ -495,8 +489,7 @@ private fun MainContentScreen(
                             binMedia = binMedia,
                             onRestore = { item -> viewModel.restoreFromBin(item) },
                             onPermanentDelete = { item -> viewModel.permanentlyDelete(item) },
-                            onEmptyBin = { viewModel.emptyBin() },
-                            hazeState = hazeState
+                            onEmptyBin = { viewModel.emptyBin() }
                         )
                     }
                 }

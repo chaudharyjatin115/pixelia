@@ -25,8 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.EmptyState
 import com.chaudharyjatin115.pixelia.ui.components.ExpressiveTopAppBar
@@ -37,8 +35,7 @@ import com.chaudharyjatin115.pixelia.ui.components.MediaThumbnail
 fun FavouritesScreen(
     favourites: List<MediaItem>,
     onPhotoClick: (MediaItem, List<MediaItem>) -> Unit,
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
     val canScrollContent by remember(favourites) {
@@ -56,7 +53,6 @@ fun FavouritesScreen(
         }
     }
 
-    val hazeModifier = if (hazeState != null) Modifier.hazeSource(state = hazeState) else Modifier
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -67,7 +63,6 @@ fun FavouritesScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(hazeModifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
         if (favourites.isEmpty()) {

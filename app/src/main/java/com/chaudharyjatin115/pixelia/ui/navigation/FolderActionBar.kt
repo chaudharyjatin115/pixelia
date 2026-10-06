@@ -8,7 +8,6 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import dev.chrisbanes.haze.HazeState
 
 enum class FolderAction(
     val label: String,
@@ -25,8 +24,7 @@ fun FolderActionBar(
     activeAction: FolderAction?,
     onActionClick: (FolderAction) -> Unit,
     modifier: Modifier = Modifier,
-    actions: List<FolderAction> = FolderAction.entries,
-    hazeState: HazeState? = null
+    actions: List<FolderAction> = FolderAction.entries
 ) {
     val currentSelected = activeAction ?: actions.first()
     FloatingPillBar(
@@ -36,7 +34,6 @@ fun FolderActionBar(
         getItemLabel = { it.label },
         getItemIcon = { it.icon },
         modifier = modifier,
-        hazeState = hazeState,
         isTabRole = false
     )
 }

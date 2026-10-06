@@ -61,8 +61,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.EmptyState
 import com.chaudharyjatin115.pixelia.ui.components.ExpressiveTopAppBar
@@ -77,8 +75,7 @@ fun BinScreen(
     onRestore: (MediaItem) -> Unit,
     onPermanentDelete: (MediaItem) -> Unit,
     onEmptyBin: () -> Unit,
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
     val canScrollContent by remember(binMedia) {
@@ -96,7 +93,6 @@ fun BinScreen(
         }
     }
 
-    val hazeModifier = if (hazeState != null) Modifier.hazeSource(state = hazeState) else Modifier
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -110,7 +106,6 @@ fun BinScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(hazeModifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
         if (binMedia.isEmpty()) {

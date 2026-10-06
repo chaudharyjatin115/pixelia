@@ -64,8 +64,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.domain.model.MediaFolder
 import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.EmptyState
@@ -84,14 +82,12 @@ enum class FolderSortOption(val displayName: String) {
 fun FoldersScreen(
     folders: List<MediaFolder>,
     onFolderClick: (MediaFolder) -> Unit,
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     FoldersGridContent(
         folders = folders,
         selectedBucketId = null,
         onFolderClick = onFolderClick,
-        hazeState = hazeState,
         modifier = modifier
     )
 }
@@ -102,8 +98,7 @@ private fun FoldersGridContent(
     folders: List<MediaFolder>,
     selectedBucketId: String?,
     onFolderClick: (MediaFolder) -> Unit,
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
     var sortOption by rememberSaveable { mutableStateOf(FolderSortOption.RECENT) }
@@ -137,7 +132,6 @@ private fun FoldersGridContent(
         }
     }
 
-    val hazeModifier = if (hazeState != null) Modifier.hazeSource(state = hazeState) else Modifier
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -149,7 +143,6 @@ private fun FoldersGridContent(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(hazeModifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
         if (sortedFolders.isEmpty()) {
@@ -364,8 +357,7 @@ fun FolderDetailScreen(
     onItemLongClick: (MediaItem) -> Unit = {},
     onClearSelection: () -> Unit = {},
     onSelectAll: () -> Unit = {},
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
     var sortOption by rememberSaveable { mutableStateOf(FolderSortOption.RECENT) }
@@ -407,7 +399,6 @@ fun FolderDetailScreen(
         }
     }
 
-    val hazeModifier = if (hazeState != null) Modifier.hazeSource(state = hazeState) else Modifier
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -419,7 +410,6 @@ fun FolderDetailScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(hazeModifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
         LazyVerticalGrid(

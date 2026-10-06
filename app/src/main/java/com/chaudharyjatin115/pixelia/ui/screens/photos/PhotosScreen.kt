@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -69,15 +70,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.domain.model.DateGroupedMedia
 import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.EmptyState
 import com.chaudharyjatin115.pixelia.ui.components.ExpressiveTopAppBar
 import com.chaudharyjatin115.pixelia.ui.components.MediaThumbnail
 import com.chaudharyjatin115.pixelia.ui.components.PartialAccessBanner
-import com.chaudharyjatin115.pixelia.ui.theme.FrostedGlassDefaults
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -97,8 +95,7 @@ fun PhotosScreen(
     onSelectAll: () -> Unit = {},
     onRefresh: () -> Unit,
     onManagePermissions: () -> Unit,
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
     val canScrollContent by remember(groupedMedia, isSelectionMode) {
@@ -115,7 +112,6 @@ fun PhotosScreen(
             scrollBehavior.state.heightOffset = 0f
         }
     }
-    val hazeModifier = if (hazeState != null) Modifier.hazeSource(state = hazeState) else Modifier
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -195,7 +191,6 @@ fun PhotosScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(hazeModifier)
             .nestedScroll(scrollBehavior.nestedScrollConnection)
     ) {
         if (groupedMedia.isEmpty() && !isLoading) {
@@ -362,8 +357,8 @@ fun PhotosScreen(
                                 .align(Alignment.TopEnd)
                                 .shadow(8.dp, shape = CircleShape)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.94f))
-                                .border(FrostedGlassDefaults.border(), shape = CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)), shape = CircleShape)
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
