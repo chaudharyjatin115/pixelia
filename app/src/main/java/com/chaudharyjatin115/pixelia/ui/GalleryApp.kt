@@ -39,12 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeSource
 import com.chaudharyjatin115.pixelia.ui.components.FolderPickerDialog
 import com.chaudharyjatin115.pixelia.ui.components.PermissionRationaleScreen
 import com.chaudharyjatin115.pixelia.ui.navigation.FloatingPillBar
@@ -69,7 +63,6 @@ fun GalleryApp(
     viewModel: GalleryViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val hazeState = remember { HazeState() }
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp >= 600
 
@@ -232,7 +225,6 @@ fun GalleryApp(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(MaterialTheme.colorScheme.background)
-                                .hazeSource(state = hazeState)
                         ) {
                             MainContentScreen(
                                 activeFolder = activeFolder,
@@ -248,7 +240,7 @@ fun GalleryApp(
                                 isSelectionMode = isSelectionMode,
                                 selectedMediaIds = selectedMediaIds,
                                 onRequestPermissions = { requestPermissions() },
-                                hazeState = hazeState
+                                hazeState = null
                             )
                         }
                     }
