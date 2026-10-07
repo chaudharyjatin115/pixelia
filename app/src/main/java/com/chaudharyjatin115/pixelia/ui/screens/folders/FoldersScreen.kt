@@ -1,7 +1,15 @@
 package com.chaudharyjatin115.pixelia.ui.screens.folders
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ripple
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -240,20 +248,37 @@ private fun FolderGridItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val imageShape = RoundedCornerShape(16.dp)
+    val imageShape = RoundedCornerShape(20.dp)
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label = "folder_item_scale"
+    )
 
     val itemBg = if (isSelected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.40f)
     } else {
-        androidx.compose.ui.graphics.Color.Transparent
+        Color.Transparent
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(16.dp))
             .background(itemBg)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(bounded = true, color = MaterialTheme.colorScheme.primary),
+                onClick = onClick
+            )
             .padding(all = if (isSelected) 4.dp else 0.dp)
             .padding(bottom = 6.dp)
     ) {
