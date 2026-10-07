@@ -23,6 +23,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -439,16 +441,32 @@ private fun MainContentScreen(
                 }
             )
         } else {
-            AnimatedContent(
-                targetState = selectedDestination,
-                transitionSpec = {
-                    (fadeIn(animationSpec = tween(220)) +
-                     scaleIn(initialScale = 0.98f, animationSpec = spring(dampingRatio = 0.80f, stiffness = Spring.StiffnessMediumLow)))
-                        .togetherWith(fadeOut(animationSpec = tween(160)))
-                },
-                label = "tab_content_transition"
-            ) { destination ->
-                when (destination) {
+            val destinations = remember { GalleryDestination.entries }
+            val pagerState = rememberPagerState(
+                initialPage = selectedDestination.ordinal,
+                pageCount = { destinations.size }
+            )
+
+            LaunchedEffect(selectedDestination) {
+                if (pagerState.currentPage != selectedDestination.ordinal) {
+                    pagerState.animateScrollToPage(selectedDestination.ordinal)
+                }
+            }
+
+            LaunchedEffect(pagerState.currentPage) {
+                val dest = destinations.getOrNull(pagerState.currentPage)
+                if (dest != null && dest != selectedDestination) {
+                    viewModel.selectDestination(dest)
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = !isSelectionMode,
+                modifier = Modifier.fillMaxSize(),
+                key = { destinations[it].name }
+            ) { page ->
+                when (destinations[page]) {
                     GalleryDestination.PHOTOS -> {
                         PhotosScreen(
                             groupedMedia = groupedMedia,

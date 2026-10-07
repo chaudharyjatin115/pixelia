@@ -8,7 +8,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -202,26 +204,36 @@ fun PhotosScreen(
                 onActionClick = onRefresh
             )
         } else {
-            // Main grid with pinch-to-zoom gesture listener
+            // Main grid with multi-touch pinch-to-zoom gesture listener
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(columnCount, minColumns, maxColumns) {
-                        detectTransformGestures { _, _, zoom, _ ->
-                            zoomScale *= zoom
-                            if (zoomScale > 1.28f) {
-                                if (columnCount > minColumns) {
-                                    columnCount--
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            do {
+                                val event = awaitPointerEvent()
+                                if (event.changes.size >= 2) {
+                                    val zoom = event.calculateZoom()
+                                    if (zoom != 1f) {
+                                        zoomScale *= zoom
+                                        if (zoomScale > 1.28f) {
+                                            if (columnCount > minColumns) {
+                                                columnCount--
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                            zoomScale = 1f
+                                        } else if (zoomScale < 0.75f) {
+                                            if (columnCount < maxColumns) {
+                                                columnCount++
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                            zoomScale = 1f
+                                        }
+                                        event.changes.forEach { it.consume() }
+                                    }
                                 }
-                                zoomScale = 1f
-                            } else if (zoomScale < 0.75f) {
-                                if (columnCount < maxColumns) {
-                                    columnCount++
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                zoomScale = 1f
-                            }
+                            } while (event.changes.any { it.pressed })
                         }
                     }
             ) {
