@@ -248,10 +248,11 @@ fun GalleryApp(
                         }
                     }
 
-                    val isFolderOrSelection = activeFolder != null || isSelectionMode
+                    val showMainNavBar = !isViewerOpen && activeFolder == null && !isSelectionMode
+                    val showActionPillBar = !isViewerOpen && isSelectionMode
 
                     AnimatedVisibility(
-                        visible = !isViewerOpen && !isFolderOrSelection,
+                        visible = showMainNavBar,
                         enter = slideInVertically(
                             initialOffsetY = { it / 2 },
                             animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
@@ -271,7 +272,7 @@ fun GalleryApp(
                     }
 
                     AnimatedVisibility(
-                        visible = !isViewerOpen && isFolderOrSelection,
+                        visible = showActionPillBar,
                         enter = slideInVertically(
                             initialOffsetY = { it / 2 },
                             animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
@@ -285,6 +286,7 @@ fun GalleryApp(
                         FolderActionBar(
                             activeAction = activeFolderAction,
                             onActionClick = { action ->
+                                viewModel.setActiveFolderAction(action)
                                 val currentTargetItems = if (activeFolder != null) {
                                     viewModel.getItemsForActiveFolder()
                                 } else {
