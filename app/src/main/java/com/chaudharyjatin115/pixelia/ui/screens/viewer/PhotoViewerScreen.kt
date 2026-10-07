@@ -328,7 +328,7 @@ fun PhotoViewerScreen(
                 }
             }
 
-            // Top Floating Frosted Glass Header (hidden while actively dragging to dismiss)
+            // Top Floating Header
             AnimatedVisibility(
                 visible = controlsVisible && currentOffsetY == 0f,
                 enter = fadeIn(tween(220)) + slideInVertically(
@@ -396,7 +396,7 @@ fun PhotoViewerScreen(
                 }
             }
 
-            // Bottom Floating Frosted Glass Action Pill (hidden while actively dragging to dismiss)
+            // Bottom Floating Action Pill
             AnimatedVisibility(
                 visible = controlsVisible && currentOffsetY == 0f,
                 enter = fadeIn(tween(220)) + slideInVertically(
