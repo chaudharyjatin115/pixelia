@@ -129,6 +129,19 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun setSelectedMedia_updatesSelectedIdsAndSelectionMode() {
+        viewModel.setSelectedMedia(setOf(100L, 101L))
+
+        assertTrue(viewModel.isSelectionMode.value)
+        assertEquals(setOf(100L, 101L), viewModel.selectedMediaIds.value)
+
+        viewModel.setSelectedMedia(emptySet())
+
+        assertFalse(viewModel.isSelectionMode.value)
+        assertTrue(viewModel.selectedMediaIds.value.isEmpty())
+    }
+
+    @Test
     fun openViewer_setsViewerMediaListAndIndex() {
         val dummyUri = mock(Uri::class.java)
         val item1 = MediaItem(id = 1L, uri = dummyUri, name = "photo1.jpg", mimeType = "image/jpeg", isVideo = false)

@@ -11,7 +11,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -56,6 +59,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +97,7 @@ fun PhotosScreen(
     onPhotoClick: (MediaItem, List<MediaItem>) -> Unit,
     onItemClick: (MediaItem) -> Unit = {},
     onItemLongClick: (MediaItem) -> Unit = {},
+    onUpdateSelection: (Set<Long>) -> Unit = {},
     onClearSelection: () -> Unit = {},
     onSelectAll: () -> Unit = {},
     onRefresh: () -> Unit,
@@ -190,10 +195,71 @@ fun PhotosScreen(
         }
     }
 
+    val displayedMedia = remember(groupedMedia) {
+        groupedMedia.flatMap { it.items }
+    }
+
+    val currentDisplayedMedia by rememberUpdatedState(displayedMedia)
+    val currentSelectedMediaIds by rememberUpdatedState(selectedMediaIds)
+    val currentOnUpdateSelection by rememberUpdatedState(onUpdateSelection)
+
+    var dragSelectStartKey by remember { mutableStateOf<Long?>(null) }
+    var initialSelectedKeys by remember { mutableStateOf<Set<Long>>(emptySet()) }
+
+    fun findItemAtOffset(offset: Offset): MediaItem? {
+        val visibleItems = gridState.layoutInfo.visibleItemsInfo
+        for (itemInfo in visibleItems) {
+            val rect = IntRect(
+                left = itemInfo.offset.x,
+                top = itemInfo.offset.y,
+                right = itemInfo.offset.x + itemInfo.size.width,
+                bottom = itemInfo.offset.y + itemInfo.size.height
+            )
+            if (rect.contains(IntOffset(offset.x.toInt(), offset.y.toInt()))) {
+                val key = itemInfo.key as? Long
+                if (key != null) {
+                    return currentDisplayedMedia.firstOrNull { it.id == key }
+                }
+            }
+        }
+        return null
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .pointerInput(gridState) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val startItem = findItemAtOffset(offset)
+                        if (startItem != null) {
+                            dragSelectStartKey = startItem.id
+                            initialSelectedKeys = currentSelectedMediaIds + startItem.id
+                            currentOnUpdateSelection(initialSelectedKeys)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val startKey = dragSelectStartKey ?: return@detectDragGesturesAfterLongPress
+                        val currentItem = findItemAtOffset(change.position)
+                        if (currentItem != null) {
+                            val mediaList = currentDisplayedMedia
+                            val startIdx = mediaList.indexOfFirst { it.id == startKey }
+                            val currentIdx = mediaList.indexOfFirst { it.id == currentItem.id }
+                            if (startIdx != -1 && currentIdx != -1) {
+                                val minIdx = minOf(startIdx, currentIdx)
+                                val maxIdx = maxOf(startIdx, currentIdx)
+                                val rangeKeys = mediaList.subList(minIdx, maxIdx + 1).map { it.id }.toSet()
+                                currentOnUpdateSelection(initialSelectedKeys + rangeKeys)
+                            }
+                        }
+                    },
+                    onDragEnd = { dragSelectStartKey = null },
+                    onDragCancel = { dragSelectStartKey = null }
+                )
+            }
     ) {
         if (groupedMedia.isEmpty() && !isLoading) {
             EmptyState(

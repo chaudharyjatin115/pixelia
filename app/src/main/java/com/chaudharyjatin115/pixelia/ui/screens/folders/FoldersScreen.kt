@@ -42,6 +42,31 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Screenshot
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,13 +79,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -68,7 +95,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -380,11 +406,14 @@ fun FolderDetailScreen(
     onPhotoClick: (MediaItem, List<MediaItem>) -> Unit,
     onItemClick: (MediaItem) -> Unit = {},
     onItemLongClick: (MediaItem) -> Unit = {},
+    onUpdateSelection: (Set<Long>) -> Unit = {},
     onClearSelection: () -> Unit = {},
     onSelectAll: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
     var sortOption by rememberSaveable { mutableStateOf(FolderSortOption.RECENT) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
 
@@ -424,6 +453,72 @@ fun FolderDetailScreen(
         }
     }
 
+    val totalFolderItems = sortedItems.size
+    var isDraggingScrubber by remember { mutableStateOf(false) }
+    var scrubberDragFraction by remember { mutableFloatStateOf(0f) }
+    var isScrollingActive by remember { mutableStateOf(false) }
+
+    LaunchedEffect(gridState.isScrollInProgress, isDraggingScrubber) {
+        if (gridState.isScrollInProgress || isDraggingScrubber) {
+            isScrollingActive = true
+        } else {
+            delay(1200L)
+            isScrollingActive = false
+        }
+    }
+
+    val activeDateHeader by remember(sortedItems) {
+        derivedStateOf {
+            val idx = if (isDraggingScrubber) {
+                (scrubberDragFraction * (totalFolderItems - 1).coerceAtLeast(0)).toInt()
+            } else {
+                gridState.firstVisibleItemIndex
+            }
+            val item = sortedItems.getOrNull(idx)
+            if (item != null) {
+                val ts = if (item.dateTaken > 0) item.dateTaken else item.dateModified
+                val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+                sdf.format(Date(ts))
+            } else ""
+        }
+    }
+
+    val thumbFraction by remember {
+        derivedStateOf {
+            if (isDraggingScrubber) {
+                scrubberDragFraction
+            } else if (totalFolderItems > 0) {
+                (gridState.firstVisibleItemIndex.toFloat() / totalFolderItems.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+        }
+    }
+
+    val currentSortedItems by rememberUpdatedState(sortedItems)
+    val currentSelectedMediaIds by rememberUpdatedState(selectedMediaIds)
+    val currentOnUpdateSelection by rememberUpdatedState(onUpdateSelection)
+
+    fun findItemAtOffset(offset: Offset): MediaItem? {
+        val visibleItems = gridState.layoutInfo.visibleItemsInfo
+        for (itemInfo in visibleItems) {
+            val rect = IntRect(
+                left = itemInfo.offset.x,
+                top = itemInfo.offset.y,
+                right = itemInfo.offset.x + itemInfo.size.width,
+                bottom = itemInfo.offset.y + itemInfo.size.height
+            )
+            if (rect.contains(IntOffset(offset.x.toInt(), offset.y.toInt()))) {
+                val key = itemInfo.key as? Long
+                if (key != null) {
+                    return currentSortedItems.firstOrNull { it.id == key }
+                }
+            }
+        }
+        return null
+    }
+
+    var dragSelectStartKey by remember { mutableStateOf<Long?>(null) }
+    var initialSelectedKeys by remember { mutableStateOf<Set<Long>>(emptySet()) }
+
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -436,6 +531,37 @@ fun FolderDetailScreen(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .pointerInput(gridState) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val startItem = findItemAtOffset(offset)
+                        if (startItem != null) {
+                            dragSelectStartKey = startItem.id
+                            initialSelectedKeys = currentSelectedMediaIds + startItem.id
+                            currentOnUpdateSelection(initialSelectedKeys)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val startKey = dragSelectStartKey ?: return@detectDragGesturesAfterLongPress
+                        val currentItem = findItemAtOffset(change.position)
+                        if (currentItem != null) {
+                            val mediaList = currentSortedItems
+                            val startIdx = mediaList.indexOfFirst { it.id == startKey }
+                            val currentIdx = mediaList.indexOfFirst { it.id == currentItem.id }
+                            if (startIdx != -1 && currentIdx != -1) {
+                                val minIdx = minOf(startIdx, currentIdx)
+                                val maxIdx = maxOf(startIdx, currentIdx)
+                                val rangeKeys = mediaList.subList(minIdx, maxIdx + 1).map { it.id }.toSet()
+                                currentOnUpdateSelection(initialSelectedKeys + rangeKeys)
+                            }
+                        }
+                    },
+                    onDragEnd = { dragSelectStartKey = null },
+                    onDragCancel = { dragSelectStartKey = null }
+                )
+            }
     ) {
         LazyVerticalGrid(
             state = gridState,
@@ -470,6 +596,106 @@ fun FolderDetailScreen(
                     },
                     isSelectionMode = isSelectionMode,
                     isSelected = isSelected
+                )
+            }
+        }
+
+        // Fast Date Rail / Timeline Scrubber in Folder View
+        AnimatedVisibility(
+            visible = (isScrollingActive || isDraggingScrubber) && totalFolderItems > 12,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(400)),
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(
+                    top = topContentPadding + 16.dp,
+                    bottom = bottomContentPadding + 16.dp,
+                    end = 4.dp
+                )
+                .width(220.dp)
+        ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val trackHeightPx = constraints.maxHeight.toFloat()
+                val thumbHeightDp = 44.dp
+                val thumbHeightPx = with(LocalDensity.current) { thumbHeightDp.toPx() }
+                val maxOffset = (trackHeightPx - thumbHeightPx).coerceAtLeast(0f)
+                val currentThumbY = thumbFraction * maxOffset
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .width(36.dp)
+                        .pointerInput(totalFolderItems) {
+                            detectVerticalDragGestures(
+                                onDragStart = { offset ->
+                                    isDraggingScrubber = true
+                                    val frac = if (maxOffset > 0f) {
+                                        ((offset.y - thumbHeightPx / 2f) / maxOffset).coerceIn(0f, 1f)
+                                    } else 0f
+                                    scrubberDragFraction = frac
+                                    val targetIdx = (frac * (totalFolderItems - 1).coerceAtLeast(0)).toInt()
+                                    coroutineScope.launch { gridState.scrollToItem(targetIdx) }
+                                },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    val newY = (scrubberDragFraction * maxOffset + dragAmount).coerceIn(0f, maxOffset)
+                                    val frac = if (maxOffset > 0f) newY / maxOffset else 0f
+                                    scrubberDragFraction = frac
+                                    val targetIdx = (frac * (totalFolderItems - 1).coerceAtLeast(0)).toInt()
+                                    coroutineScope.launch { gridState.scrollToItem(targetIdx) }
+                                },
+                                onDragEnd = { isDraggingScrubber = false },
+                                onDragCancel = { isDraggingScrubber = false }
+                            )
+                        }
+                )
+
+                if (activeDateHeader.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    x = -16.dp.roundToPx(),
+                                    y = (currentThumbY - 6.dp.roundToPx()).toInt()
+                                )
+                            }
+                            .align(Alignment.TopEnd)
+                            .shadow(8.dp, shape = CircleShape)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)), shape = CircleShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = activeDateHeader,
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(x = 0, y = currentThumbY.toInt()) }
+                        .align(Alignment.TopEnd)
+                        .size(width = 5.dp, height = thumbHeightDp)
+                        .shadow(4.dp, shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(
+                            if (isDraggingScrubber) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.40f)
+                        )
                 )
             }
         }
