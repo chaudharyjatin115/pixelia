@@ -502,12 +502,13 @@ fun FolderDetailScreen(
 
     fun findItemAtOffset(offset: Offset): MediaItem? {
         val visibleItems = gridState.layoutInfo.visibleItemsInfo
+        val topPadding = gridState.layoutInfo.beforeContentPadding
         for (itemInfo in visibleItems) {
             val rect = IntRect(
                 left = itemInfo.offset.x,
-                top = itemInfo.offset.y,
+                top = itemInfo.offset.y + topPadding,
                 right = itemInfo.offset.x + itemInfo.size.width,
-                bottom = itemInfo.offset.y + itemInfo.size.height
+                bottom = itemInfo.offset.y + topPadding + itemInfo.size.height
             )
             if (rect.contains(IntOffset(offset.x.toInt(), offset.y.toInt()))) {
                 val key = itemInfo.key as? Long
@@ -531,31 +532,29 @@ fun FolderDetailScreen(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .pointerInput(gridState, isSelectionMode) {
-                if (isSelectionMode) {
-                    var dragSelectStartId: Long? = null
-                    var initialSelectedIds = emptySet<Long>()
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { offset ->
-                            val startItem = findItemAtOffset(offset)
-                            if (startItem != null) {
-                                dragSelectStartId = startItem.id
-                                initialSelectedIds = currentSelectedMediaIds + startItem.id
-                                currentOnUpdateSelection(initialSelectedIds)
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                        },
-                        onDrag = { change, _ ->
-                            change.consume()
-                            val startId = dragSelectStartId ?: return@detectDragGesturesAfterLongPress
-                            val currentItem = findItemAtOffset(change.position) ?: return@detectDragGesturesAfterLongPress
-                            val rangeIds = mediaIdRange(currentSortedItemIds, startId, currentItem.id)
-                            if (rangeIds.isNotEmpty()) {
-                                currentOnUpdateSelection(initialSelectedIds + rangeIds)
-                            }
+            .pointerInput(gridState) {
+                var dragSelectStartId: Long? = null
+                var initialSelectedIds = emptySet<Long>()
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        val startItem = findItemAtOffset(offset)
+                        if (startItem != null) {
+                            dragSelectStartId = startItem.id
+                            initialSelectedIds = currentSelectedMediaIds + startItem.id
+                            currentOnUpdateSelection(initialSelectedIds)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
-                    )
-                }
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val startId = dragSelectStartId ?: return@detectDragGesturesAfterLongPress
+                        val currentItem = findItemAtOffset(change.position) ?: return@detectDragGesturesAfterLongPress
+                        val rangeIds = mediaIdRange(currentSortedItemIds, startId, currentItem.id)
+                        if (rangeIds.isNotEmpty()) {
+                            currentOnUpdateSelection(initialSelectedIds + rangeIds)
+                        }
+                    }
+                )
             }
     ) {
         LazyVerticalGrid(
@@ -586,7 +585,7 @@ fun FolderDetailScreen(
                             onPhotoClick(item, sortedItems)
                         }
                     },
-                    onLongClick = if (isSelectionMode) null else ({ onItemLongClick(item) }),
+                    onLongClick = null,
                     isSelectionMode = isSelectionMode,
                     isSelected = isSelected
                 )

@@ -1,10 +1,5 @@
 package com.chaudharyjatin115.pixelia.ui.components
 
-import android.content.ClipData
-import android.content.ClipDescription
-import android.content.Intent
-import android.os.Build
-import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -18,7 +13,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,10 +40,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -74,7 +66,6 @@ fun MediaThumbnail(
     shape: RoundedCornerShape = RoundedCornerShape(12.dp)
 ) {
     val context = LocalContext.current
-    val view = LocalView.current
 
     val animatedScale by animateFloatAsState(
         targetValue = if (isSelectionMode && isSelected) 0.93f else 1.0f,
@@ -103,26 +94,6 @@ fun MediaThumbnail(
             .clip(dynamicShape)
             .then(if (selectionBorder != null) Modifier.border(selectionBorder, dynamicShape) else Modifier)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .pointerInput(item.uri, isSelectionMode) {
-                if (!isSelectionMode) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = {
-                            val clipData = ClipData.newUri(context.contentResolver, item.name, item.uri)
-                            val shadowBuilder = View.DragShadowBuilder(view)
-                            val flags = View.DRAG_FLAG_GLOBAL or View.DRAG_FLAG_GLOBAL_URI_READ
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                view.startDragAndDrop(clipData, shadowBuilder, null, flags)
-                            } else {
-                                @Suppress("DEPRECATION")
-                                view.startDrag(clipData, shadowBuilder, null, flags)
-                            }
-                        },
-                        onDrag = { _, _ -> },
-                        onDragEnd = {},
-                        onDragCancel = {}
-                    )
-                }
-            }
             .combinedClickable(
                 role = Role.Button,
                 onClick = onClick,
