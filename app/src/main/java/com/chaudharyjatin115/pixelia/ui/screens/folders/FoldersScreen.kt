@@ -103,6 +103,7 @@ import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.EmptyState
 import com.chaudharyjatin115.pixelia.ui.components.ExpressiveTopAppBar
 import com.chaudharyjatin115.pixelia.ui.components.MediaThumbnail
+import com.chaudharyjatin115.pixelia.ui.screens.mediaIdRange
 import java.util.Locale
 
 enum class FolderSortOption(val displayName: String) {
@@ -494,6 +495,8 @@ fun FolderDetailScreen(
     }
 
     val currentSortedItems by rememberUpdatedState(sortedItems)
+    val sortedItemIds = remember(sortedItems) { sortedItems.map { it.id } }
+    val currentSortedItemIds by rememberUpdatedState(sortedItemIds)
     val currentSelectedMediaIds by rememberUpdatedState(selectedMediaIds)
     val currentOnUpdateSelection by rememberUpdatedState(onUpdateSelection)
 
@@ -516,9 +519,6 @@ fun FolderDetailScreen(
         return null
     }
 
-    var dragSelectStartKey by remember { mutableStateOf<Long?>(null) }
-    var initialSelectedKeys by remember { mutableStateOf<Set<Long>>(emptySet()) }
-
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -531,36 +531,31 @@ fun FolderDetailScreen(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .pointerInput(gridState) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        val startItem = findItemAtOffset(offset)
-                        if (startItem != null) {
-                            dragSelectStartKey = startItem.id
-                            initialSelectedKeys = currentSelectedMediaIds + startItem.id
-                            currentOnUpdateSelection(initialSelectedKeys)
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        val startKey = dragSelectStartKey ?: return@detectDragGesturesAfterLongPress
-                        val currentItem = findItemAtOffset(change.position)
-                        if (currentItem != null) {
-                            val mediaList = currentSortedItems
-                            val startIdx = mediaList.indexOfFirst { it.id == startKey }
-                            val currentIdx = mediaList.indexOfFirst { it.id == currentItem.id }
-                            if (startIdx != -1 && currentIdx != -1) {
-                                val minIdx = minOf(startIdx, currentIdx)
-                                val maxIdx = maxOf(startIdx, currentIdx)
-                                val rangeKeys = mediaList.subList(minIdx, maxIdx + 1).map { it.id }.toSet()
-                                currentOnUpdateSelection(initialSelectedKeys + rangeKeys)
+            .pointerInput(gridState, isSelectionMode) {
+                if (isSelectionMode) {
+                    var dragSelectStartId: Long? = null
+                    var initialSelectedIds = emptySet<Long>()
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            val startItem = findItemAtOffset(offset)
+                            if (startItem != null) {
+                                dragSelectStartId = startItem.id
+                                initialSelectedIds = currentSelectedMediaIds + startItem.id
+                                currentOnUpdateSelection(initialSelectedIds)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val startId = dragSelectStartId ?: return@detectDragGesturesAfterLongPress
+                            val currentItem = findItemAtOffset(change.position) ?: return@detectDragGesturesAfterLongPress
+                            val rangeIds = mediaIdRange(currentSortedItemIds, startId, currentItem.id)
+                            if (rangeIds.isNotEmpty()) {
+                                currentOnUpdateSelection(initialSelectedIds + rangeIds)
                             }
                         }
-                    },
-                    onDragEnd = { dragSelectStartKey = null },
-                    onDragCancel = { dragSelectStartKey = null }
-                )
+                    )
+                }
             }
     ) {
         LazyVerticalGrid(
@@ -591,16 +586,13 @@ fun FolderDetailScreen(
                             onPhotoClick(item, sortedItems)
                         }
                     },
-                    onLongClick = {
-                        onItemLongClick(item)
-                    },
+                    onLongClick = if (isSelectionMode) null else ({ onItemLongClick(item) }),
                     isSelectionMode = isSelectionMode,
                     isSelected = isSelected
                 )
             }
         }
 
-        // Fast Date Rail / Timeline Scrubber in Folder View
         AnimatedVisibility(
             visible = (isScrollingActive || isDraggingScrubber) && totalFolderItems > 12,
             enter = fadeIn(tween(180)),
