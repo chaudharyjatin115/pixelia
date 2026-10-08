@@ -82,6 +82,7 @@ import com.chaudharyjatin115.pixelia.ui.components.EmptyState
 import com.chaudharyjatin115.pixelia.ui.components.ExpressiveTopAppBar
 import com.chaudharyjatin115.pixelia.ui.components.MediaThumbnail
 import com.chaudharyjatin115.pixelia.ui.components.PartialAccessBanner
+import com.chaudharyjatin115.pixelia.ui.screens.mediaIdRange
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -200,11 +201,10 @@ fun PhotosScreen(
     }
 
     val currentDisplayedMedia by rememberUpdatedState(displayedMedia)
+    val displayedMediaIds = remember(displayedMedia) { displayedMedia.map { it.id } }
+    val currentDisplayedMediaIds by rememberUpdatedState(displayedMediaIds)
     val currentSelectedMediaIds by rememberUpdatedState(selectedMediaIds)
     val currentOnUpdateSelection by rememberUpdatedState(onUpdateSelection)
-
-    var dragSelectStartKey by remember { mutableStateOf<Long?>(null) }
-    var initialSelectedKeys by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
     fun findItemAtOffset(offset: Offset): MediaItem? {
         val visibleItems = gridState.layoutInfo.visibleItemsInfo
@@ -229,36 +229,31 @@ fun PhotosScreen(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .pointerInput(gridState) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = { offset ->
-                        val startItem = findItemAtOffset(offset)
-                        if (startItem != null) {
-                            dragSelectStartKey = startItem.id
-                            initialSelectedKeys = currentSelectedMediaIds + startItem.id
-                            currentOnUpdateSelection(initialSelectedKeys)
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        val startKey = dragSelectStartKey ?: return@detectDragGesturesAfterLongPress
-                        val currentItem = findItemAtOffset(change.position)
-                        if (currentItem != null) {
-                            val mediaList = currentDisplayedMedia
-                            val startIdx = mediaList.indexOfFirst { it.id == startKey }
-                            val currentIdx = mediaList.indexOfFirst { it.id == currentItem.id }
-                            if (startIdx != -1 && currentIdx != -1) {
-                                val minIdx = minOf(startIdx, currentIdx)
-                                val maxIdx = maxOf(startIdx, currentIdx)
-                                val rangeKeys = mediaList.subList(minIdx, maxIdx + 1).map { it.id }.toSet()
-                                currentOnUpdateSelection(initialSelectedKeys + rangeKeys)
+            .pointerInput(gridState, isSelectionMode) {
+                if (isSelectionMode) {
+                    var dragSelectStartId: Long? = null
+                    var initialSelectedIds = emptySet<Long>()
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            val startItem = findItemAtOffset(offset)
+                            if (startItem != null) {
+                                dragSelectStartId = startItem.id
+                                initialSelectedIds = currentSelectedMediaIds + startItem.id
+                                currentOnUpdateSelection(initialSelectedIds)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val startId = dragSelectStartId ?: return@detectDragGesturesAfterLongPress
+                            val currentItem = findItemAtOffset(change.position) ?: return@detectDragGesturesAfterLongPress
+                            val rangeIds = mediaIdRange(currentDisplayedMediaIds, startId, currentItem.id)
+                            if (rangeIds.isNotEmpty()) {
+                                currentOnUpdateSelection(initialSelectedIds + rangeIds)
                             }
                         }
-                    },
-                    onDragEnd = { dragSelectStartKey = null },
-                    onDragCancel = { dragSelectStartKey = null }
-                )
+                    )
+                }
             }
     ) {
         if (groupedMedia.isEmpty() && !isLoading) {
@@ -360,9 +355,7 @@ fun PhotosScreen(
                                         onPhotoClick(item, allMedia)
                                     }
                                 },
-                                onLongClick = {
-                                    onItemLongClick(item)
-                                },
+                                onLongClick = if (isSelectionMode) null else ({ onItemLongClick(item) }),
                                 isSelectionMode = isSelectionMode,
                                 isSelected = isSelected
                             )
