@@ -433,6 +433,7 @@ private fun MainContentScreen(
                 onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
                 onItemClick = { item -> viewModel.toggleSelectMedia(item.id) },
                 onItemLongClick = { item -> viewModel.toggleSelectMedia(item.id) },
+                onUpdateSelection = { ids -> viewModel.setSelectedMedia(ids) },
                 onClearSelection = { viewModel.clearSelection() },
                 onSelectAll = {
                     if (selectedMediaIds.size == folderItems.size) {
@@ -480,6 +481,7 @@ private fun MainContentScreen(
                             onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
                             onItemClick = { item -> viewModel.toggleSelectMedia(item.id) },
                             onItemLongClick = { item -> viewModel.toggleSelectMedia(item.id) },
+                            onUpdateSelection = { ids -> viewModel.setSelectedMedia(ids) },
                             onClearSelection = { viewModel.clearSelection() },
                             onSelectAll = {
                                 if (selectedMediaIds.size == allMedia.size) {

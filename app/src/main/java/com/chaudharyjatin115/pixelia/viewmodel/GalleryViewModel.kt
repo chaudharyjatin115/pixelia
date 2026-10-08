@@ -121,6 +121,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _isSelectionMode.value = true
     }
 
+    fun setSelectedMedia(ids: Set<Long>) {
+        _selectedMediaIds.value = ids
+        _isSelectionMode.value = ids.isNotEmpty()
+    }
+
     fun clearSelection() {
         _selectedMediaIds.value = emptySet()
         _isSelectionMode.value = false
