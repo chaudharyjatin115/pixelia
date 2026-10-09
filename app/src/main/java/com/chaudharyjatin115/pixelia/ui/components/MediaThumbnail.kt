@@ -170,19 +170,16 @@ fun MediaThumbnail(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
-                        )
-                    )
-                    .padding(horizontal = 6.dp, vertical = 5.dp)
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Rounded.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(13.dp),
                         tint = Color.White
                     )
                     if (item.formattedDuration.isNotBlank()) {
@@ -190,8 +187,8 @@ fun MediaThumbnail(
                         Text(
                             text = item.formattedDuration,
                             color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -211,7 +208,7 @@ fun MediaThumbnail(
                 Icon(
                     imageVector = Icons.Rounded.Favorite,
                     contentDescription = "Favorited",
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(13.dp),
                     tint = Color(0xFFFF4D4D)
                 )
             }
