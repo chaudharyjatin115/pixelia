@@ -1,9 +1,17 @@
 package com.chaudharyjatin115.pixelia.ui.screens.viewer
 
 import android.app.Activity
+import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
@@ -55,10 +63,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoFixHigh
+import androidx.compose.material.icons.rounded.Crop
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.AlertDialog
@@ -158,6 +169,7 @@ fun PhotoViewerScreen(
     var showInfoSheet by remember { mutableStateOf(false) }
     var showEditorSheet by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showWallpaperDialog by remember { mutableStateOf(false) }
     var isCurrentPhotoZoomed by remember { mutableStateOf(false) }
 
     LaunchedEffect(isTabletopMode) {
@@ -235,7 +247,7 @@ fun PhotoViewerScreen(
                 },
                 onShare = { shareMedia(context, currentItem) },
                 onEdit = { showEditorSheet = true },
-                onUseAs = { useMediaAs(context, currentItem) },
+                onUseAs = { showWallpaperDialog = true },
                 onDelete = { showDeleteConfirmDialog = true },
                 onShowInfo = { showInfoSheet = true },
                 modifier = Modifier.weight(1f)
@@ -455,9 +467,9 @@ fun PhotoViewerScreen(
                                 }
                             }
 
-                            // Use As (System wallpaper, contact photo, profile photo)
+                            // Use As (Wallpaper & options)
                             IconButton(
-                                onClick = { useMediaAs(context, currentItem) },
+                                onClick = { showWallpaperDialog = true },
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
@@ -557,20 +569,151 @@ fun PhotoViewerScreen(
             }
         )
     }
+
+    // Set Wallpaper Dialog
+    if (showWallpaperDialog) {
+        AlertDialog(
+            onDismissRequest = { showWallpaperDialog = false },
+            title = {
+                Text(
+                    text = "Set as Wallpaper",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Choose screen to apply wallpaper:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    WallpaperOptionItem(
+                        icon = Icons.Rounded.Home,
+                        label = "Home Screen",
+                        onClick = {
+                            showWallpaperDialog = false
+                            coroutineScope.launch(Dispatchers.IO) {
+                                applyWallpaper(context, currentItem, WallpaperManager.FLAG_SYSTEM)
+                            }
+                        }
+                    )
+
+                    WallpaperOptionItem(
+                        icon = Icons.Rounded.Lock,
+                        label = "Lock Screen",
+                        onClick = {
+                            showWallpaperDialog = false
+                            coroutineScope.launch(Dispatchers.IO) {
+                                applyWallpaper(context, currentItem, WallpaperManager.FLAG_LOCK)
+                            }
+                        }
+                    )
+
+                    WallpaperOptionItem(
+                        icon = Icons.Rounded.Wallpaper,
+                        label = "Home & Lock Screen",
+                        onClick = {
+                            showWallpaperDialog = false
+                            coroutineScope.launch(Dispatchers.IO) {
+                                applyWallpaper(
+                                    context,
+                                    currentItem,
+                                    WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK
+                                )
+                            }
+                        }
+                    )
+
+                    WallpaperOptionItem(
+                        icon = Icons.Rounded.Crop,
+                        label = "System Crop & Set",
+                        onClick = {
+                            showWallpaperDialog = false
+                            openSystemWallpaperPicker(context, currentItem)
+                        }
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                OutlinedButton(onClick = { showWallpaperDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
-private fun useMediaAs(context: Context, item: MediaItem) {
-    try {
-        val intent = Intent(Intent.ACTION_ATTACH_DATA).apply {
-            setDataAndType(item.uri, item.mimeType)
-            putExtra("mimeType", item.mimeType)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+@Composable
+private fun WallpaperOptionItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(14.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(text = label, fontWeight = FontWeight.Medium)
         }
-        context.startActivity(Intent.createChooser(intent, "Set picture as"))
-    } catch (e: android.content.ActivityNotFoundException) {
-        // Safe fallback when no application handles ACTION_ATTACH_DATA on device
-    } catch (e: SecurityException) {
-        // Safe fallback when activity launch permission is restricted
+    }
+}
+
+private suspend fun applyWallpaper(
+    context: Context,
+    item: MediaItem,
+    flag: Int
+) {
+    try {
+        val bitmap: Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, item.uri))
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.getBitmap(context.contentResolver, item.uri)
+        }
+        val wallpaperManager = WallpaperManager.getInstance(context)
+        wallpaperManager.setBitmap(bitmap, null, true, flag)
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Wallpaper updated successfully", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Failed to set wallpaper: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+private fun openSystemWallpaperPicker(context: Context, item: MediaItem) {
+    try {
+        val wallpaperManager = WallpaperManager.getInstance(context)
+        val cropIntent = wallpaperManager.getCropAndSetWallpaperIntent(item.uri)
+        context.startActivity(cropIntent)
+    } catch (e: Exception) {
+        try {
+            val attachIntent = Intent(Intent.ACTION_ATTACH_DATA).apply {
+                setDataAndType(item.uri, item.mimeType)
+                putExtra("mimeType", item.mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(attachIntent, "Set picture as"))
+        } catch (e2: Exception) {
+            Toast.makeText(context, "Wallpaper app unavailable", Toast.LENGTH_SHORT).show()
+        }
     }
 }
 
