@@ -22,7 +22,18 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Icon
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
@@ -66,6 +77,10 @@ fun GalleryApp(
     modifier: Modifier = Modifier,
     initialViewUri: Uri? = null,
     initialViewMimeType: String? = null,
+    isPicker: Boolean = false,
+    allowMultiple: Boolean = false,
+    onMediaPicked: ((List<Uri>) -> Unit)? = null,
+    onPickerCancel: (() -> Unit)? = null,
     viewModel: GalleryViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -161,7 +176,15 @@ fun GalleryApp(
         permissionLauncher.launch(permissionsToRequest)
     }
 
-    if (!isViewerOpen) {
+    if (isPicker) {
+        BackHandler {
+            if (isSelectionMode) {
+                viewModel.clearSelection()
+            } else {
+                onPickerCancel?.invoke()
+            }
+        }
+    } else if (!isViewerOpen) {
         if (activeFolder != null) {
             BackHandler {
                 if (isSelectionMode) {
@@ -189,7 +212,7 @@ fun GalleryApp(
         } else {
             if (isTablet) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    if (!isViewerOpen) {
+                    if (!isViewerOpen && !isPicker) {
                         GalleryNavigationRail(
                             selectedDestination = selectedDestination,
                             onDestinationSelected = { dest ->
@@ -217,6 +240,9 @@ fun GalleryApp(
                                 isPartialAccess = isPartialAccess,
                                 isSelectionMode = isSelectionMode,
                                 selectedMediaIds = selectedMediaIds,
+                                isPicker = isPicker,
+                                allowMultiple = allowMultiple,
+                                onMediaPicked = onMediaPicked,
                                 onRequestPermissions = { requestPermissions() }
                             )
                         }
@@ -243,13 +269,17 @@ fun GalleryApp(
                                 isPartialAccess = isPartialAccess,
                                 isSelectionMode = isSelectionMode,
                                 selectedMediaIds = selectedMediaIds,
+                                isPicker = isPicker,
+                                allowMultiple = allowMultiple,
+                                onMediaPicked = onMediaPicked,
                                 onRequestPermissions = { requestPermissions() }
                             )
                         }
                     }
 
-                    val showMainNavBar = !isViewerOpen && activeFolder == null && !isSelectionMode
-                    val showActionPillBar = !isViewerOpen && isSelectionMode
+                    val showMainNavBar = !isViewerOpen && activeFolder == null && !isSelectionMode && !isPicker
+                    val showActionPillBar = !isViewerOpen && isSelectionMode && !isPicker
+                    val showPickerDoneButton = !isViewerOpen && isPicker && allowMultiple && selectedMediaIds.isNotEmpty()
 
                     AnimatedVisibility(
                         visible = showMainNavBar,
@@ -308,6 +338,49 @@ fun GalleryApp(
                                 }
                             }
                         )
+                    }
+
+                    AnimatedVisibility(
+                        visible = showPickerDoneButton,
+                        enter = slideInVertically(
+                            initialOffsetY = { it / 2 },
+                            animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeIn(tween(180)),
+                        exit = slideOutVertically(
+                            targetOffsetY = { it / 2 },
+                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeOut(tween(140)),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                            .padding(bottom = 16.dp)
+                    ) {
+                        val selectedUris = remember(selectedMediaIds, allMedia) {
+                            allMedia.filter { selectedMediaIds.contains(it.id) }.map { it.uri }
+                        }
+                        Button(
+                            onClick = { onMediaPicked?.invoke(selectedUris) },
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            modifier = Modifier
+                                .height(52.dp)
+                                .padding(horizontal = 24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Select (${selectedMediaIds.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -411,8 +484,17 @@ private fun MainContentScreen(
     isPartialAccess: Boolean,
     isSelectionMode: Boolean,
     selectedMediaIds: Set<Long>,
+    isPicker: Boolean = false,
+    allowMultiple: Boolean = false,
+    onMediaPicked: ((List<Uri>) -> Unit)? = null,
     onRequestPermissions: () -> Unit
 ) {
+    LaunchedEffect(isPicker) {
+        if (isPicker) {
+            viewModel.selectDestination(GalleryDestination.FOLDERS)
+        }
+    }
+
     AnimatedContent(
         targetState = activeFolder,
         transitionSpec = {
@@ -429,6 +511,9 @@ private fun MainContentScreen(
                 items = folderItems,
                 isSelectionMode = isSelectionMode,
                 selectedMediaIds = selectedMediaIds,
+                isPicker = isPicker,
+                allowMultiple = allowMultiple,
+                onMediaPicked = onMediaPicked,
                 onBackClick = { viewModel.closeFolder() },
                 onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
                 onItemClick = { item -> viewModel.toggleSelectMedia(item.id) },
@@ -442,6 +527,11 @@ private fun MainContentScreen(
                         viewModel.selectAll(folderItems)
                     }
                 }
+            )
+        } else if (isPicker) {
+            FoldersScreen(
+                folders = folders,
+                onFolderClick = { folder -> viewModel.openFolder(folder) }
             )
         } else {
             val destinations = remember { GalleryDestination.entries }
@@ -478,6 +568,9 @@ private fun MainContentScreen(
                             isPartialAccess = isPartialAccess,
                             isSelectionMode = isSelectionMode,
                             selectedMediaIds = selectedMediaIds,
+                            isPicker = isPicker,
+                            allowMultiple = allowMultiple,
+                            onMediaPicked = onMediaPicked,
                             onPhotoClick = { item, list -> viewModel.openViewer(item, list) },
                             onItemClick = { item -> viewModel.toggleSelectMedia(item.id) },
                             onItemLongClick = { item -> viewModel.toggleSelectMedia(item.id) },

@@ -403,6 +403,9 @@ fun FolderDetailScreen(
     items: List<MediaItem>,
     isSelectionMode: Boolean = false,
     selectedMediaIds: Set<Long> = emptySet(),
+    isPicker: Boolean = false,
+    allowMultiple: Boolean = false,
+    onMediaPicked: ((List<android.net.Uri>) -> Unit)? = null,
     onBackClick: () -> Unit,
     onPhotoClick: (MediaItem, List<MediaItem>) -> Unit,
     onItemClick: (MediaItem) -> Unit = {},
@@ -579,14 +582,20 @@ fun FolderDetailScreen(
                 MediaThumbnail(
                     item = item,
                     onClick = {
-                        if (isSelectionMode) {
+                        if (isPicker) {
+                            if (allowMultiple) {
+                                onItemClick(item)
+                            } else {
+                                onMediaPicked?.invoke(listOf(item.uri))
+                            }
+                        } else if (isSelectionMode) {
                             onItemClick(item)
                         } else {
                             onPhotoClick(item, sortedItems)
                         }
                     },
                     onLongClick = null,
-                    isSelectionMode = isSelectionMode,
+                    isSelectionMode = isSelectionMode || (isPicker && allowMultiple),
                     isSelected = isSelected
                 )
             }
