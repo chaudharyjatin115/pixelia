@@ -95,6 +95,9 @@ fun PhotosScreen(
     isPartialAccess: Boolean,
     isSelectionMode: Boolean = false,
     selectedMediaIds: Set<Long> = emptySet(),
+    isPicker: Boolean = false,
+    allowMultiple: Boolean = false,
+    onMediaPicked: ((List<android.net.Uri>) -> Unit)? = null,
     onPhotoClick: (MediaItem, List<MediaItem>) -> Unit,
     onItemClick: (MediaItem) -> Unit = {},
     onItemLongClick: (MediaItem) -> Unit = {},
@@ -348,14 +351,20 @@ fun PhotosScreen(
                             MediaThumbnail(
                                 item = item,
                                 onClick = {
-                                    if (isSelectionMode) {
+                                    if (isPicker) {
+                                        if (allowMultiple) {
+                                            onItemClick(item)
+                                        } else {
+                                            onMediaPicked?.invoke(listOf(item.uri))
+                                        }
+                                    } else if (isSelectionMode) {
                                         onItemClick(item)
                                     } else {
                                         onPhotoClick(item, allMedia)
                                     }
                                 },
                                 onLongClick = null,
-                                isSelectionMode = isSelectionMode,
+                                isSelectionMode = isSelectionMode || (isPicker && allowMultiple),
                                 isSelected = isSelected
                             )
                         }
