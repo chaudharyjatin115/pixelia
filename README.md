@@ -1,6 +1,6 @@
 # Pixelia
 
-A small, open-source material you expressive gallery app for Android. Browse your photos and videos, keep them organized, and make quick edits. Built with Jetpack Compose.
+A small, open-source gallery app with Material You Expressive design for Android. Browse your photos and videos, keep them organized, and make quick edits. Built with Jetpack Compose.
 
 ## Screenshots
 
@@ -15,6 +15,10 @@ A small, open-source material you expressive gallery app for Android. Browse you
 
 - Date-grouped photo and video grid that stays smooth with large libraries
 - Folder view with copy, move, and share
+- System Media Picker support (`ACTION_GET_CONTENT` & `ACTION_PICK`)
+- Native Set Wallpaper options for Home, Lock, and Home & Lock screens
+- Motion Photo video extraction & playback and interactive Panorama auto-scroll
+- Extended format support for SVG and animated WebP/GIF
 - Favorites, plus a Bin so deleted items can be recovered
 - Non-destructive editor: crop, rotate, flip, and color filters
 - Metadata viewer with EXIF details and a map link for GPS location
