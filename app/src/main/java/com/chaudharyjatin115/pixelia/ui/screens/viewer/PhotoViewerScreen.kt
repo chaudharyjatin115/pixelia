@@ -11,6 +11,8 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
@@ -52,17 +54,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import android.net.Uri
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoFixHigh
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Crop
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Favorite
@@ -70,8 +79,13 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MotionPhotosOn
+import androidx.compose.material.icons.rounded.Panorama
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Wallpaper
+import com.chaudharyjatin115.pixelia.data.media.MotionPhotoUtils
+import java.io.File
+import kotlinx.coroutines.isActive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -172,25 +186,78 @@ fun PhotoViewerScreen(
     var showWallpaperDialog by remember { mutableStateOf(false) }
     var isCurrentPhotoZoomed by remember { mutableStateOf(false) }
 
+    var motionVideoFile by remember { mutableStateOf<File?>(null) }
+    var extractingMotionPhotoId by remember { mutableStateOf<Long?>(null) }
+    var showMotionVideoPlayer by remember { mutableStateOf(false) }
+    var showPanoramaViewer by remember { mutableStateOf(false) }
+    var extractionJob by remember { mutableStateOf<Job?>(null) }
+
+    val currentItem = mediaList.getOrNull(pagerState.currentPage) ?: mediaList.first()
+
     LaunchedEffect(isTabletopMode) {
         if (isTabletopMode) {
             controlsVisible = true
         }
     }
 
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(currentItem.id) {
+        extractionJob?.cancel()
+        extractionJob = null
         isCurrentPhotoZoomed = false
+        extractingMotionPhotoId = null
+        showMotionVideoPlayer = false
+        showPanoramaViewer = false
+        motionVideoFile?.delete()
+        motionVideoFile = null
+    }
+
+    DisposableEffect(currentItem.id) {
+        onDispose {
+            extractionJob?.cancel()
+            motionVideoFile?.delete()
+            motionVideoFile = null
+        }
     }
 
     var localFavMap by remember { mutableStateOf(mapOf<Long, Boolean>()) }
-
-    val currentItem = mediaList.getOrNull(pagerState.currentPage) ?: mediaList.first()
     val isCurrentFav = localFavMap[currentItem.id] ?: currentItem.isFavorite
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val dismissAnimY = remember { Animatable(0f) }
+
+    fun playMotionPhoto() {
+        if (showMotionVideoPlayer) {
+            showMotionVideoPlayer = false
+            return
+        }
+        if (extractingMotionPhotoId == currentItem.id) return
+
+        val targetItemId = currentItem.id
+        extractionJob = coroutineScope.launch {
+            var extractedFile: File? = null
+            extractingMotionPhotoId = targetItemId
+            try {
+                if (motionVideoFile == null) {
+                    extractedFile = MotionPhotoUtils.extractMotionVideo(context, currentItem.uri)
+                    ensureActive()
+                    motionVideoFile = extractedFile
+                    extractedFile = null
+                }
+                if (motionVideoFile != null) {
+                    showMotionVideoPlayer = true
+                } else {
+                    Toast.makeText(context, "No motion video found in this photo", Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                extractedFile?.delete()
+                if (extractingMotionPhotoId == targetItemId) {
+                    extractingMotionPhotoId = null
+                }
+            }
+        }
+    }
 
     val currentOffsetY = dismissAnimY.value
     val dismissProgress = (currentOffsetY / 600f).coerceIn(0f, 1f)
@@ -397,12 +464,68 @@ fun PhotoViewerScreen(
                             )
                         }
 
-                        IconButton(onClick = { showInfoSheet = true }) {
-                            Icon(
-                                imageVector = Icons.Rounded.Info,
-                                contentDescription = "Details",
-                                tint = Color.White
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (currentItem.isMotionPhoto) {
+                                Surface(
+                                    onClick = { playMotionPhoto() },
+                                    shape = CircleShape,
+                                    color = Color.Black.copy(alpha = 0.5f)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.MotionPhotosOn,
+                                            contentDescription = "Motion Photo",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (extractingMotionPhotoId == currentItem.id) "Extracting..." else "Motion",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                            } else if (currentItem.isPanorama) {
+                                Surface(
+                                    onClick = { showPanoramaViewer = true },
+                                    shape = CircleShape,
+                                    color = Color.Black.copy(alpha = 0.5f)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Panorama,
+                                            contentDescription = "Panorama",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Panorama",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+
+                            IconButton(onClick = { showInfoSheet = true }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Info,
+                                    contentDescription = "Details",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -567,6 +690,49 @@ fun PhotoViewerScreen(
             onSavedCopy = {
                 onImageEdited()
             }
+        )
+    }
+
+    if (showMotionVideoPlayer && motionVideoFile != null) {
+        val tempItem = remember(motionVideoFile) {
+            currentItem.copy(
+                uri = Uri.fromFile(motionVideoFile!!),
+                isVideo = true
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            VideoPlayerView(
+                item = tempItem,
+                isActivePage = true,
+                controlsVisible = true,
+                onToggleControls = {}
+            )
+            IconButton(
+                onClick = { showMotionVideoPlayer = false },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.6f))
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "Exit Motion Photo",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+
+    if (showPanoramaViewer) {
+        PanoramaViewerScreen(
+            item = currentItem,
+            onClose = { showPanoramaViewer = false }
         )
     }
 
@@ -1058,4 +1224,99 @@ private fun TabletopControlPanel(
     }
 }
 
+@Composable
+private fun PanoramaViewerScreen(
+    item: MediaItem,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+    var isAutoScrolling by remember { mutableStateOf(true) }
 
+    LaunchedEffect(isAutoScrolling, scrollState.maxValue) {
+        if (isAutoScrolling && scrollState.maxValue > 0) {
+            while (isActive && isAutoScrolling) {
+                if (scrollState.value >= scrollState.maxValue) {
+                    scrollState.scrollTo(0)
+                } else {
+                    scrollState.animateScrollTo(
+                        value = (scrollState.value + 300).coerceAtMost(scrollState.maxValue),
+                        animationSpec = tween(durationMillis = 1000, easing = LinearEasing)
+                    )
+                }
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    isAutoScrolling = !isAutoScrolling
+                }
+            }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .horizontalScroll(scrollState)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(item.uri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = item.name,
+                contentScale = ContentScale.FillHeight,
+                modifier = Modifier.fillMaxHeight()
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.6f))
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Close Panorama",
+                    tint = Color.White
+                )
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.6f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Panorama,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isAutoScrolling) "Auto-Panning (Tap to pause)" else "Panorama (Tap to pan)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}

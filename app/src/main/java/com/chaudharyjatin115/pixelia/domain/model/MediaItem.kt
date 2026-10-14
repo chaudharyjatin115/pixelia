@@ -46,4 +46,29 @@ data class MediaItem(
 
     val resolutionText: String
         get() = if (width > 0 && height > 0) "$width × $height" else ""
+
+    val isRaw: Boolean
+        get() = !isVideo && (
+            mimeType.contains("raw", ignoreCase = true) ||
+            mimeType == "image/x-adobe-dng" ||
+            name.endsWith(".dng", ignoreCase = true) ||
+            name.endsWith(".cr2", ignoreCase = true) ||
+            name.endsWith(".nef", ignoreCase = true) ||
+            name.endsWith(".arw", ignoreCase = true) ||
+            name.endsWith(".orf", ignoreCase = true) ||
+            name.endsWith(".rw2", ignoreCase = true)
+        )
+
+    val isPanorama: Boolean
+        get() = !isVideo && width >= 2400 && height > 0 && (
+            width.toFloat() / height.toFloat() >= 2.6f ||
+            height.toFloat() / width.toFloat() >= 2.6f
+        )
+
+    val isMotionPhoto: Boolean
+        get() = !isVideo && (
+            name.startsWith("MVIMG_", ignoreCase = true) ||
+            name.startsWith("MOTION_PHOTO_", ignoreCase = true) ||
+            name.contains("_BURST_COVER", ignoreCase = true)
+        )
 }
