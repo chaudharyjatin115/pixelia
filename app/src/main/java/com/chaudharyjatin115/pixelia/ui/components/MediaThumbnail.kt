@@ -25,8 +25,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Camera
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.MotionPhotosOn
+import androidx.compose.material.icons.rounded.Panorama
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -167,32 +170,29 @@ fun MediaThumbnail(
         }
 
         if (item.isVideo) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(13.dp),
-                        tint = Color.White
-                    )
-                    if (item.formattedDuration.isNotBlank()) {
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text(
-                            text = item.formattedDuration,
-                            color = Color.White,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
+            ThumbnailBadge(
+                icon = Icons.Rounded.PlayArrow,
+                label = item.formattedDuration,
+                modifier = Modifier.align(Alignment.BottomStart)
+            )
+        } else if (item.isMotionPhoto) {
+            ThumbnailBadge(
+                icon = Icons.Rounded.MotionPhotosOn,
+                label = "MOTION",
+                modifier = Modifier.align(Alignment.BottomStart)
+            )
+        } else if (item.isRaw) {
+            ThumbnailBadge(
+                icon = Icons.Rounded.Camera,
+                label = "RAW",
+                modifier = Modifier.align(Alignment.BottomStart)
+            )
+        } else if (item.isPanorama) {
+            ThumbnailBadge(
+                icon = Icons.Rounded.Panorama,
+                label = "PANO",
+                modifier = Modifier.align(Alignment.BottomStart)
+            )
         }
 
         if (item.isFavorite && !isSelectionMode) {
@@ -210,6 +210,39 @@ fun MediaThumbnail(
                     contentDescription = "Favorited",
                     modifier = Modifier.size(13.dp),
                     tint = Color(0xFFFF4D4D)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThumbnailBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String = "",
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .padding(6.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 6.dp, vertical = 3.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(13.dp),
+                tint = Color.White
+            )
+            if (label.isNotBlank()) {
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = label,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
