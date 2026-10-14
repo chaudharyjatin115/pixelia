@@ -106,6 +106,8 @@ dependencies {
     // Image loading for MediaStore images and video thumbnails
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-video:3.0.4")
+    implementation("io.coil-kt.coil3:coil-svg:3.0.4")
+    implementation("io.coil-kt.coil3:coil-gif:3.0.4")
 
     // EXIF Metadata Inspector
     implementation("androidx.exifinterface:exifinterface:1.4.2")
