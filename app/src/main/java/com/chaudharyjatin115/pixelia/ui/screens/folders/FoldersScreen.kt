@@ -184,8 +184,8 @@ private fun FoldersGridContent(
         if (sortedFolders.isEmpty()) {
             EmptyState(
                 icon = Icons.Rounded.Folder,
-                title = "No folders found",
-                description = "Folders containing pictures and videos will appear here automatically."
+                title = "No collections found",
+                description = "Collections containing pictures and videos will appear here automatically."
             )
         } else {
             LazyVerticalGrid(
@@ -217,7 +217,7 @@ private fun FoldersGridContent(
         }
 
         ExpressiveTopAppBar(
-            title = "Folders",
+            title = "Collections",
             scrollBehavior = scrollBehavior,
             canScroll = canScrollContent,
             actions = {
@@ -225,7 +225,7 @@ private fun FoldersGridContent(
                     IconButton(onClick = { sortMenuExpanded = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.Sort,
-                            contentDescription = "Sort folders",
+                            contentDescription = "Sort collections",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }

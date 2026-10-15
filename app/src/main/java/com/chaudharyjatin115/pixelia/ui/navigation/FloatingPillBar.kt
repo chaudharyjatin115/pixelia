@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.chaudharyjatin115.pixelia.ui.animation.rememberSelectionWiggle
 
 @Composable
 fun <T> FloatingPillBar(
@@ -117,6 +118,7 @@ private fun FloatingPillItem(
     isTabRole: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val iconRotation by rememberSelectionWiggle(selected, -7f)
 
     val containerColor by animateColorAsState(
         targetValue = if (selected) {
@@ -176,6 +178,7 @@ private fun FloatingPillItem(
                     .graphicsLayer {
                         scaleX = iconScale
                         scaleY = iconScale
+                        rotationZ = iconRotation
                     }
             )
             AnimatedVisibility(
