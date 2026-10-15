@@ -48,7 +48,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -226,55 +228,51 @@ fun GalleryApp(
                             .weight(1f)
                             .fillMaxSize()
                     ) {
-                        if (!isViewerOpen) {
-                            MainContentScreen(
-                                activeFolder = activeFolder,
-                                selectedDestination = selectedDestination,
-                                viewModel = viewModel,
-                                allMedia = allMedia,
-                                groupedMedia = groupedMedia,
-                                folders = folders,
-                                favorites = favorites,
-                                binMedia = binMedia,
-                                isLoading = isLoading,
-                                isPartialAccess = isPartialAccess,
-                                isSelectionMode = isSelectionMode,
-                                selectedMediaIds = selectedMediaIds,
-                                isPicker = isPicker,
-                                allowMultiple = allowMultiple,
-                                onMediaPicked = onMediaPicked,
-                                onRequestPermissions = { requestPermissions() }
-                            )
-                        }
+                        MainContentScreen(
+                            activeFolder = activeFolder,
+                            selectedDestination = selectedDestination,
+                            viewModel = viewModel,
+                            allMedia = allMedia,
+                            groupedMedia = groupedMedia,
+                            folders = folders,
+                            favorites = favorites,
+                            binMedia = binMedia,
+                            isLoading = isLoading,
+                            isPartialAccess = isPartialAccess,
+                            isSelectionMode = isSelectionMode,
+                            selectedMediaIds = selectedMediaIds,
+                            isPicker = isPicker,
+                            allowMultiple = allowMultiple,
+                            onMediaPicked = onMediaPicked,
+                            onRequestPermissions = { requestPermissions() }
+                        )
                     }
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (!isViewerOpen) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background)
-                        ) {
-                            MainContentScreen(
-                                activeFolder = activeFolder,
-                                selectedDestination = selectedDestination,
-                                viewModel = viewModel,
-                                allMedia = allMedia,
-                                groupedMedia = groupedMedia,
-                                folders = folders,
-                                favorites = favorites,
-                                binMedia = binMedia,
-                                isLoading = isLoading,
-                                isPartialAccess = isPartialAccess,
-                                isSelectionMode = isSelectionMode,
-                                selectedMediaIds = selectedMediaIds,
-                                isPicker = isPicker,
-                                allowMultiple = allowMultiple,
-                                onMediaPicked = onMediaPicked,
-                                onRequestPermissions = { requestPermissions() }
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
+                    ) {
+                        MainContentScreen(
+                            activeFolder = activeFolder,
+                            selectedDestination = selectedDestination,
+                            viewModel = viewModel,
+                            allMedia = allMedia,
+                            groupedMedia = groupedMedia,
+                            folders = folders,
+                            favorites = favorites,
+                            binMedia = binMedia,
+                            isLoading = isLoading,
+                            isPartialAccess = isPartialAccess,
+                            isSelectionMode = isSelectionMode,
+                            selectedMediaIds = selectedMediaIds,
+                            isPicker = isPicker,
+                            allowMultiple = allowMultiple,
+                            onMediaPicked = onMediaPicked,
+                            onRequestPermissions = { requestPermissions() }
+                        )
                     }
 
                     val showMainNavBar = !isViewerOpen && activeFolder == null && !isSelectionMode && !isPicker
@@ -535,6 +533,7 @@ private fun MainContentScreen(
             )
         } else {
             val destinations = remember { GalleryDestination.entries }
+            val currentSelectedDestination by rememberUpdatedState(selectedDestination)
             val pagerState = rememberPagerState(
                 initialPage = selectedDestination.ordinal,
                 pageCount = { destinations.size }
@@ -542,14 +541,16 @@ private fun MainContentScreen(
 
             LaunchedEffect(selectedDestination) {
                 if (pagerState.currentPage != selectedDestination.ordinal) {
-                    pagerState.animateScrollToPage(selectedDestination.ordinal)
+                    pagerState.scrollToPage(selectedDestination.ordinal)
                 }
             }
 
-            LaunchedEffect(pagerState.currentPage) {
-                val dest = destinations.getOrNull(pagerState.currentPage)
-                if (dest != null && dest != selectedDestination) {
-                    viewModel.selectDestination(dest)
+            LaunchedEffect(pagerState) {
+                snapshotFlow { pagerState.settledPage }.collect { settledPage ->
+                    val dest = destinations.getOrNull(settledPage)
+                    if (dest != null && dest != currentSelectedDestination) {
+                        viewModel.selectDestination(dest)
+                    }
                 }
             }
 

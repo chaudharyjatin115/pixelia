@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -415,7 +416,12 @@ fun FolderDetailScreen(
     onSelectAll: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val gridState = rememberLazyGridState()
+    val gridState = rememberSaveable(
+        folder.bucketId,
+        saver = LazyGridState.Saver
+    ) {
+        LazyGridState()
+    }
     val coroutineScope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     var sortOption by rememberSaveable { mutableStateOf(FolderSortOption.RECENT) }
@@ -531,12 +537,13 @@ fun FolderDetailScreen(
     val topContentPadding = statusBarHeight + (if (isLandscape) 52.dp else 64.dp) + 4.dp
     val bottomContentPadding = navBarHeight + (if (isLandscape) 88.dp else 144.dp)
 
+    var dragSelectStartId by remember { mutableStateOf<Long?>(null) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .pointerInput(gridState) {
-                var dragSelectStartId: Long? = null
                 var initialSelectedIds = emptySet<Long>()
                 detectDragGesturesAfterLongPress(
                     onDragStart = { offset ->
@@ -555,6 +562,18 @@ fun FolderDetailScreen(
                         val rangeIds = mediaIdRange(currentSortedItemIds, startId, currentItem.id)
                         if (rangeIds.isNotEmpty()) {
                             currentOnUpdateSelection(initialSelectedIds + rangeIds)
+                        }
+                    },
+                    onDragEnd = {
+                        coroutineScope.launch {
+                            delay(150L)
+                            dragSelectStartId = null
+                        }
+                    },
+                    onDragCancel = {
+                        coroutineScope.launch {
+                            delay(150L)
+                            dragSelectStartId = null
                         }
                     }
                 )
@@ -589,7 +608,9 @@ fun FolderDetailScreen(
                                 onMediaPicked?.invoke(listOf(item.uri))
                             }
                         } else if (isSelectionMode) {
-                            onItemClick(item)
+                            if (item.id != dragSelectStartId) {
+                                onItemClick(item)
+                            }
                         } else {
                             onPhotoClick(item, sortedItems)
                         }
