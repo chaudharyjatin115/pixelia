@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -47,6 +48,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.chaudharyjatin115.pixelia.ui.animation.rememberSelectionWiggle
 
 /**
  * Adaptive navigation rail for wider screens (tablets, foldables, landscape)
@@ -89,6 +91,7 @@ fun GalleryNavigationRail(
             ) {
                 destinations.forEach { destination ->
                     val isSelected = destination == selectedDestination
+                    val iconRotation by rememberSelectionWiggle(isSelected, -7f)
 
                     val pillBgColor by animateColorAsState(
                         targetValue = if (isSelected) {
@@ -143,7 +146,11 @@ fun GalleryNavigationRail(
                                     Icon(
                                         imageVector = destination.icon,
                                         contentDescription = null,
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .graphicsLayer {
+                                                rotationZ = iconRotation
+                                            },
                                         tint = contentColor
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))

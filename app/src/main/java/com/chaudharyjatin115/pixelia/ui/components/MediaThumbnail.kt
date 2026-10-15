@@ -56,6 +56,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.chaudharyjatin115.pixelia.domain.model.MediaItem
+import com.chaudharyjatin115.pixelia.ui.animation.rememberSelectionWiggle
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -69,6 +70,8 @@ fun MediaThumbnail(
     shape: RoundedCornerShape = RoundedCornerShape(12.dp)
 ) {
     val context = LocalContext.current
+    val isSelectedInGrid = isSelectionMode && isSelected
+    val selectionRotation by rememberSelectionWiggle(isSelectedInGrid, -2.5f)
 
     val animatedScale by animateFloatAsState(
         targetValue = if (isSelectionMode && isSelected) 0.93f else 1.0f,
@@ -92,6 +95,7 @@ fun MediaThumbnail(
             .graphicsLayer {
                 scaleX = animatedScale
                 scaleY = animatedScale
+                rotationZ = selectionRotation
             }
             .aspectRatio(1f)
             .clip(dynamicShape)

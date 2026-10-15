@@ -111,7 +111,7 @@ fun BinScreen(
         if (binMedia.isEmpty()) {
             EmptyState(
                 icon = Icons.Rounded.DeleteOutline,
-                title = "Bin is empty",
+                title = "Trash is empty",
                 description = "Deleted photos and videos will appear here."
             )
         } else {
@@ -142,14 +142,14 @@ fun BinScreen(
         }
 
         ExpressiveTopAppBar(
-            title = "Bin",
+            title = "Trash",
             scrollBehavior = scrollBehavior,
             canScroll = canScrollContent,
             actions = {
                 if (binMedia.isNotEmpty()) {
                     TextButton(onClick = { showEmptyBinDialog = true }) {
                         Text(
-                            text = "Empty Bin",
+                            text = "Empty Trash",
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -263,12 +263,12 @@ fun BinScreen(
             onDismissRequest = { showEmptyBinDialog = false },
             title = {
                 Text(
-                    text = "Empty Bin?",
+                    text = "Empty Trash?",
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
-                Text("All ${binMedia.size} items in the bin will be permanently deleted.")
+                Text("All ${binMedia.size} items in Trash will be permanently deleted.")
             },
             confirmButton = {
                 Button(
@@ -281,7 +281,7 @@ fun BinScreen(
                         contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
-                    Text("Empty Bin")
+                    Text("Empty Trash")
                 }
             },
             dismissButton = {

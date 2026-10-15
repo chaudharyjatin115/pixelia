@@ -19,7 +19,7 @@ enum class GalleryDestination(
     ),
     FOLDERS(
         route = "folders",
-        label = "Folders",
+        label = "Collections",
         icon = Icons.Rounded.Folder
     ),
     FAVOURITES(
@@ -29,7 +29,7 @@ enum class GalleryDestination(
     ),
     BIN(
         route = "bin",
-        label = "Bin",
+        label = "Trash",
         icon = Icons.Rounded.Delete
     )
 }
