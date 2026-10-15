@@ -34,9 +34,9 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -108,7 +109,11 @@ fun PhotosScreen(
     onManagePermissions: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val gridState = rememberLazyGridState()
+    val gridState = rememberSaveable(
+        saver = LazyGridState.Saver
+    ) {
+        LazyGridState()
+    }
     val canScrollContent by remember(groupedMedia, isSelectionMode) {
         derivedStateOf {
             !isSelectionMode && groupedMedia.isNotEmpty() && (gridState.canScrollForward || gridState.canScrollBackward)
@@ -229,12 +234,13 @@ fun PhotosScreen(
         return null
     }
 
+    var dragSelectStartId by remember { mutableStateOf<Long?>(null) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .pointerInput(gridState) {
-                var dragSelectStartId: Long? = null
                 var initialSelectedIds = emptySet<Long>()
                 detectDragGesturesAfterLongPress(
                     onDragStart = { offset ->
@@ -253,6 +259,18 @@ fun PhotosScreen(
                         val rangeIds = mediaIdRange(currentDisplayedMediaIds, startId, currentItem.id)
                         if (rangeIds.isNotEmpty()) {
                             currentOnUpdateSelection(initialSelectedIds + rangeIds)
+                        }
+                    },
+                    onDragEnd = {
+                        coroutineScope.launch {
+                            delay(150L)
+                            dragSelectStartId = null
+                        }
+                    },
+                    onDragCancel = {
+                        coroutineScope.launch {
+                            delay(150L)
+                            dragSelectStartId = null
                         }
                     }
                 )
@@ -358,7 +376,9 @@ fun PhotosScreen(
                                             onMediaPicked?.invoke(listOf(item.uri))
                                         }
                                     } else if (isSelectionMode) {
-                                        onItemClick(item)
+                                        if (item.id != dragSelectStartId) {
+                                            onItemClick(item)
+                                        }
                                     } else {
                                         onPhotoClick(item, allMedia)
                                     }
