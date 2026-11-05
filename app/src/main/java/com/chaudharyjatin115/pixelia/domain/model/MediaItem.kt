@@ -53,10 +53,15 @@ data class MediaItem(
             mimeType == "image/x-adobe-dng" ||
             name.endsWith(".dng", ignoreCase = true) ||
             name.endsWith(".cr2", ignoreCase = true) ||
+            name.endsWith(".cr3", ignoreCase = true) ||
             name.endsWith(".nef", ignoreCase = true) ||
+            name.endsWith(".nrw", ignoreCase = true) ||
             name.endsWith(".arw", ignoreCase = true) ||
             name.endsWith(".orf", ignoreCase = true) ||
-            name.endsWith(".rw2", ignoreCase = true)
+            name.endsWith(".rw2", ignoreCase = true) ||
+            name.endsWith(".pef", ignoreCase = true) ||
+            name.endsWith(".srw", ignoreCase = true) ||
+            name.endsWith(".raf", ignoreCase = true)
         )
 
     val isPanorama: Boolean
