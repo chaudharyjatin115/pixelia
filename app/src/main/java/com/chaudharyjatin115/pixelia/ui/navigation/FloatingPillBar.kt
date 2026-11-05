@@ -58,6 +58,7 @@ fun <T> FloatingPillBar(
     getItemLabel: (T) -> String,
     getItemIcon: (T) -> ImageVector,
     modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.Center,
     isTabRole: Boolean = true
 ) {
     Box(
@@ -65,13 +66,13 @@ fun <T> FloatingPillBar(
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(bottom = 12.dp, start = 16.dp, end = 16.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = contentAlignment
     ) {
         val shape = CircleShape
 
         Surface(
             modifier = Modifier
-                .widthIn(min = 280.dp, max = 500.dp)
+                .widthIn(min = 180.dp, max = 500.dp)
                 .height(56.dp),
             shape = shape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,

@@ -321,20 +321,21 @@ fun GalleryApp(
                                     allMedia
                                 }
                                 when (action) {
-                                    FolderAction.SHARE -> {
-                                        viewModel.shareSelectedItems(context, currentTargetItems)
-                                    }
-                                    FolderAction.DELETE -> {
-                                        showBatchDeleteConfirmDialog = true
-                                    }
                                     FolderAction.COPY -> {
                                         showFolderPickerForAction = FolderAction.COPY
                                     }
                                     FolderAction.MOVE -> {
                                         showFolderPickerForAction = FolderAction.MOVE
                                     }
+                                    FolderAction.SHARE -> {
+                                        viewModel.shareSelectedItems(context, currentTargetItems)
+                                    }
+                                    FolderAction.DELETE -> {
+                                        showBatchDeleteConfirmDialog = true
+                                    }
                                 }
-                            }
+                            },
+                            contentAlignment = Alignment.Center
                         )
                     }
 
