@@ -134,6 +134,7 @@ class MediaRepository(
     }
 
     private fun applyStateAndPublish(scannedItems: List<MediaItem>) {
+        localState.purgeExpiredTrash(30)
         val favIds = localState.getFavoriteIds()
         val unfavIds = localState.getUnfavoriteIds()
         val trashedIds = localState.getTrashedIds()

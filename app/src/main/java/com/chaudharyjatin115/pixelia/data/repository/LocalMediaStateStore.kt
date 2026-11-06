@@ -105,6 +105,27 @@ class LocalMediaStateStore(context: Context) {
         editor.apply()
     }
 
+    fun purgeExpiredTrash(daysThreshold: Int = 30): Set<String> {
+        val trashed = HashSet(getTrashedIds())
+        if (trashed.isEmpty()) return emptySet()
+        val now = System.currentTimeMillis()
+        val maxAgeMs = daysThreshold * 86_400_000L
+        val expired = mutableSetOf<String>()
+        val editor = prefs.edit()
+        for (id in trashed) {
+            val timestamp = getTrashTimestamp(id)
+            if (timestamp > 0 && (now - timestamp) > maxAgeMs) {
+                expired.add(id)
+                editor.remove(KEY_TRASH_TIME_PREFIX + id)
+            }
+        }
+        if (expired.isNotEmpty()) {
+            trashed.removeAll(expired)
+            editor.putStringSet(KEY_TRASHED, trashed).apply()
+        }
+        return expired
+    }
+
     companion object {
         private const val KEY_FAVORITES = "pref_favorites"
         private const val KEY_UNFAVORITES = "pref_unfavorites"

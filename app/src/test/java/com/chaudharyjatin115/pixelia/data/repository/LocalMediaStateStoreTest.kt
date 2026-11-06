@@ -112,4 +112,16 @@ class LocalMediaStateStoreTest {
         assertEquals(0L, store.getTrashTimestamp("100"))
         assertEquals(0L, store.getTrashTimestamp("200"))
     }
+
+    @Test
+    fun purgeExpiredTrash_removesItemsOlderThanThreshold() {
+        store.batchMoveToTrash(listOf("300"))
+        val thirtyOneDaysAgo = System.currentTimeMillis() - (31 * 86_400_000L)
+        inMemoryLongs["trash_time_300"] = thirtyOneDaysAgo
+
+        val expired = store.purgeExpiredTrash(30)
+        assertTrue(expired.contains("300"))
+        assertFalse(store.getTrashedIds().contains("300"))
+        assertEquals(0L, store.getTrashTimestamp("300"))
+    }
 }
