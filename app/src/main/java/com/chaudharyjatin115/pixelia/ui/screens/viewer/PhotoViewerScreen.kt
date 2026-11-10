@@ -591,15 +591,17 @@ fun PhotoViewerScreen(
                             }
 
                             // Use As (Wallpaper & options)
-                            IconButton(
-                                onClick = { showWallpaperDialog = true },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Wallpaper,
-                                    contentDescription = "Use as",
-                                    tint = Color.White
-                                )
+                            if (!currentItem.isVideo) {
+                                IconButton(
+                                    onClick = { showWallpaperDialog = true },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Wallpaper,
+                                        contentDescription = "Use as",
+                                        tint = Color.White
+                                    )
+                                }
                             }
 
                             // Favorite toggle (Instant optimistic feedback with vibrant red heart)
@@ -737,7 +739,7 @@ fun PhotoViewerScreen(
     }
 
     // Set Wallpaper Dialog
-    if (showWallpaperDialog) {
+    if (showWallpaperDialog && !currentItem.isVideo) {
         AlertDialog(
             onDismissRequest = { showWallpaperDialog = false },
             title = {
@@ -1176,8 +1178,10 @@ private fun TabletopControlPanel(
                         Icon(imageVector = Icons.Rounded.AutoFixHigh, contentDescription = "Edit", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
-                IconButton(onClick = onUseAs) {
-                    Icon(imageVector = Icons.Rounded.Wallpaper, contentDescription = "Use as", tint = MaterialTheme.colorScheme.onSurface)
+                if (!item.isVideo) {
+                    IconButton(onClick = onUseAs) {
+                        Icon(imageVector = Icons.Rounded.Wallpaper, contentDescription = "Use as", tint = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
