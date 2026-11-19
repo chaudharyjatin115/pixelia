@@ -9,13 +9,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -23,7 +26,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -32,6 +37,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.pager.HorizontalPager
@@ -53,11 +59,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalConfiguration
+import com.chaudharyjatin115.pixelia.domain.model.DateGroupedMedia
+import com.chaudharyjatin115.pixelia.domain.model.MediaFolder
+import com.chaudharyjatin115.pixelia.domain.model.MediaItem
 import com.chaudharyjatin115.pixelia.ui.components.FolderPickerDialog
 import com.chaudharyjatin115.pixelia.ui.components.PermissionRationaleScreen
 import com.chaudharyjatin115.pixelia.ui.navigation.FloatingPillBar
@@ -65,7 +74,6 @@ import com.chaudharyjatin115.pixelia.ui.navigation.FolderAction
 import com.chaudharyjatin115.pixelia.ui.navigation.FolderActionBar
 import com.chaudharyjatin115.pixelia.ui.navigation.GalleryDestination
 import com.chaudharyjatin115.pixelia.ui.navigation.GalleryNavigationBar
-import com.chaudharyjatin115.pixelia.ui.navigation.GalleryNavigationRail
 import com.chaudharyjatin115.pixelia.ui.screens.bin.BinScreen
 import com.chaudharyjatin115.pixelia.ui.screens.favourites.FavouritesScreen
 import com.chaudharyjatin115.pixelia.ui.screens.folders.FolderDetailScreen
@@ -212,177 +220,114 @@ fun GalleryApp(
                 onRequestPermission = { requestPermissions() }
             )
         } else {
+            val showMainNavBar = !isViewerOpen && activeFolder == null && !isSelectionMode && !isPicker
+            val showActionPillBar = !isViewerOpen && isSelectionMode && !isPicker
+            val showPickerDoneButton = !isViewerOpen && isPicker && allowMultiple && selectedMediaIds.isNotEmpty()
+
+            val onFolderActionClick: (FolderAction) -> Unit = { action ->
+                viewModel.setActiveFolderAction(action)
+                val currentTargetItems = if (activeFolder != null) {
+                    viewModel.getItemsForActiveFolder()
+                } else {
+                    allMedia
+                }
+                when (action) {
+                    FolderAction.COPY -> showFolderPickerForAction = FolderAction.COPY
+                    FolderAction.MOVE -> showFolderPickerForAction = FolderAction.MOVE
+                    FolderAction.SHARE -> viewModel.shareSelectedItems(context, currentTargetItems)
+                    FolderAction.DELETE -> showBatchDeleteConfirmDialog = true
+                }
+            }
+
             if (isTablet) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    if (!isViewerOpen && !isPicker) {
-                        GalleryNavigationRail(
-                            selectedDestination = selectedDestination,
-                            onDestinationSelected = { dest ->
-                                viewModel.selectDestination(dest)
+                    AnimatedVisibility(
+                        visible = activeFolder != null && !isPicker,
+                        enter = expandHorizontally(
+                            animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeIn(tween(180)),
+                        exit = shrinkHorizontally(
+                            animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
+                        ) + fadeOut(tween(140)),
+                        modifier = Modifier
+                            .weight(0.35f)
+                            .fillMaxHeight()
+                    ) {
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.surface)
+                            ) {
+                                FoldersScreen(
+                                    folders = folders,
+                                    selectedBucketId = activeFolder?.bucketId,
+                                    isSidebarMode = true,
+                                    onFolderClick = { folder -> viewModel.openFolder(folder) }
+                                )
                             }
-                        )
+                            VerticalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.fillMaxHeight()
+                            )
+                        }
                     }
 
-                    Box(
+                    MainPaneContent(
+                        activeFolder = activeFolder,
+                        selectedDestination = selectedDestination,
+                        viewModel = viewModel,
+                        allMedia = allMedia,
+                        groupedMedia = groupedMedia,
+                        folders = folders,
+                        favorites = favorites,
+                        binMedia = binMedia,
+                        isLoading = isLoading,
+                        isPartialAccess = isPartialAccess,
+                        isSelectionMode = isSelectionMode,
+                        selectedMediaIds = selectedMediaIds,
+                        isPicker = isPicker,
+                        allowMultiple = allowMultiple,
+                        showMainNavBar = showMainNavBar,
+                        showActionPillBar = showActionPillBar,
+                        showPickerDoneButton = showPickerDoneButton,
+                        activeFolderAction = activeFolderAction,
+                        onFolderActionClick = onFolderActionClick,
+                        onMediaPicked = onMediaPicked,
+                        onRequestPermissions = { requestPermissions() },
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize()
-                    ) {
-                        MainContentScreen(
-                            activeFolder = activeFolder,
-                            selectedDestination = selectedDestination,
-                            viewModel = viewModel,
-                            allMedia = allMedia,
-                            groupedMedia = groupedMedia,
-                            folders = folders,
-                            favorites = favorites,
-                            binMedia = binMedia,
-                            isLoading = isLoading,
-                            isPartialAccess = isPartialAccess,
-                            isSelectionMode = isSelectionMode,
-                            selectedMediaIds = selectedMediaIds,
-                            isPicker = isPicker,
-                            allowMultiple = allowMultiple,
-                            onMediaPicked = onMediaPicked,
-                            onRequestPermissions = { requestPermissions() }
-                        )
-                    }
+                    )
                 }
             } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                    ) {
-                        MainContentScreen(
-                            activeFolder = activeFolder,
-                            selectedDestination = selectedDestination,
-                            viewModel = viewModel,
-                            allMedia = allMedia,
-                            groupedMedia = groupedMedia,
-                            folders = folders,
-                            favorites = favorites,
-                            binMedia = binMedia,
-                            isLoading = isLoading,
-                            isPartialAccess = isPartialAccess,
-                            isSelectionMode = isSelectionMode,
-                            selectedMediaIds = selectedMediaIds,
-                            isPicker = isPicker,
-                            allowMultiple = allowMultiple,
-                            onMediaPicked = onMediaPicked,
-                            onRequestPermissions = { requestPermissions() }
-                        )
-                    }
-
-                    val showMainNavBar = !isViewerOpen && activeFolder == null && !isSelectionMode && !isPicker
-                    val showActionPillBar = !isViewerOpen && isSelectionMode && !isPicker
-                    val showPickerDoneButton = !isViewerOpen && isPicker && allowMultiple && selectedMediaIds.isNotEmpty()
-
-                    AnimatedVisibility(
-                        visible = showMainNavBar,
-                        enter = slideInVertically(
-                            initialOffsetY = { it / 2 },
-                            animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeIn(tween(180)),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it / 2 },
-                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeOut(tween(140)),
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    ) {
-                        GalleryNavigationBar(
-                            selectedDestination = selectedDestination,
-                            onDestinationSelected = { dest ->
-                                viewModel.selectDestination(dest)
-                            }
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        visible = showActionPillBar,
-                        enter = slideInVertically(
-                            initialOffsetY = { it / 2 },
-                            animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeIn(tween(180)),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it / 2 },
-                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeOut(tween(140)),
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    ) {
-                        FolderActionBar(
-                            activeAction = activeFolderAction,
-                            onActionClick = { action ->
-                                viewModel.setActiveFolderAction(action)
-                                val currentTargetItems = if (activeFolder != null) {
-                                    viewModel.getItemsForActiveFolder()
-                                } else {
-                                    allMedia
-                                }
-                                when (action) {
-                                    FolderAction.COPY -> {
-                                        showFolderPickerForAction = FolderAction.COPY
-                                    }
-                                    FolderAction.MOVE -> {
-                                        showFolderPickerForAction = FolderAction.MOVE
-                                    }
-                                    FolderAction.SHARE -> {
-                                        viewModel.shareSelectedItems(context, currentTargetItems)
-                                    }
-                                    FolderAction.DELETE -> {
-                                        showBatchDeleteConfirmDialog = true
-                                    }
-                                }
-                            },
-                            contentAlignment = Alignment.Center
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        visible = showPickerDoneButton,
-                        enter = slideInVertically(
-                            initialOffsetY = { it / 2 },
-                            animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeIn(tween(180)),
-                        exit = slideOutVertically(
-                            targetOffsetY = { it / 2 },
-                            animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
-                        ) + fadeOut(tween(140)),
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding()
-                            .padding(bottom = 16.dp)
-                    ) {
-                        val selectedUris = remember(selectedMediaIds, allMedia) {
-                            allMedia.filter { selectedMediaIds.contains(it.id) }.map { it.uri }
-                        }
-                        Button(
-                            onClick = { onMediaPicked?.invoke(selectedUris) },
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            modifier = Modifier
-                                .height(52.dp)
-                                .padding(horizontal = 24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Select (${selectedMediaIds.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
+                MainPaneContent(
+                    activeFolder = activeFolder,
+                    selectedDestination = selectedDestination,
+                    viewModel = viewModel,
+                    allMedia = allMedia,
+                    groupedMedia = groupedMedia,
+                    folders = folders,
+                    favorites = favorites,
+                    binMedia = binMedia,
+                    isLoading = isLoading,
+                    isPartialAccess = isPartialAccess,
+                    isSelectionMode = isSelectionMode,
+                    selectedMediaIds = selectedMediaIds,
+                    isPicker = isPicker,
+                    allowMultiple = allowMultiple,
+                    showMainNavBar = showMainNavBar,
+                    showActionPillBar = showActionPillBar,
+                    showPickerDoneButton = showPickerDoneButton,
+                    activeFolderAction = activeFolderAction,
+                    onFolderActionClick = onFolderActionClick,
+                    onMediaPicked = onMediaPicked,
+                    onRequestPermissions = { requestPermissions() },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
+        }
         }
 
         if (showBatchDeleteConfirmDialog) {
@@ -467,18 +412,156 @@ fun GalleryApp(
             )
         }
     }
+
+@Composable
+private fun MainPaneContent(
+    activeFolder: MediaFolder?,
+    selectedDestination: GalleryDestination,
+    viewModel: GalleryViewModel,
+    allMedia: List<MediaItem>,
+    groupedMedia: List<DateGroupedMedia>,
+    folders: List<MediaFolder>,
+    favorites: List<MediaItem>,
+    binMedia: List<MediaItem>,
+    isLoading: Boolean,
+    isPartialAccess: Boolean,
+    isSelectionMode: Boolean,
+    selectedMediaIds: Set<Long>,
+    isPicker: Boolean,
+    allowMultiple: Boolean,
+    showMainNavBar: Boolean,
+    showActionPillBar: Boolean,
+    showPickerDoneButton: Boolean,
+    activeFolderAction: FolderAction?,
+    onFolderActionClick: (FolderAction) -> Unit,
+    onMediaPicked: ((List<Uri>) -> Unit)?,
+    onRequestPermissions: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            MainContentScreen(
+                activeFolder = activeFolder,
+                selectedDestination = selectedDestination,
+                viewModel = viewModel,
+                allMedia = allMedia,
+                groupedMedia = groupedMedia,
+                folders = folders,
+                favorites = favorites,
+                binMedia = binMedia,
+                isLoading = isLoading,
+                isPartialAccess = isPartialAccess,
+                isSelectionMode = isSelectionMode,
+                selectedMediaIds = selectedMediaIds,
+                isPicker = isPicker,
+                allowMultiple = allowMultiple,
+                onMediaPicked = onMediaPicked,
+                onRequestPermissions = onRequestPermissions
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showMainNavBar,
+            enter = slideInVertically(
+                initialOffsetY = { it / 2 },
+                animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(tween(180)),
+            exit = slideOutVertically(
+                targetOffsetY = { it / 2 },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(tween(140)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            GalleryNavigationBar(
+                selectedDestination = selectedDestination,
+                onDestinationSelected = { dest ->
+                    viewModel.selectDestination(dest)
+                }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showActionPillBar,
+            enter = slideInVertically(
+                initialOffsetY = { it / 2 },
+                animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(tween(180)),
+            exit = slideOutVertically(
+                targetOffsetY = { it / 2 },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(tween(140)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            FolderActionBar(
+                activeAction = activeFolderAction,
+                onActionClick = onFolderActionClick,
+                contentAlignment = Alignment.Center
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showPickerDoneButton,
+            enter = slideInVertically(
+                initialOffsetY = { it / 2 },
+                animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(tween(180)),
+            exit = slideOutVertically(
+                targetOffsetY = { it / 2 },
+                animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeOut(tween(140)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp)
+        ) {
+            val selectedUris = remember(selectedMediaIds, allMedia) {
+                allMedia.filter { selectedMediaIds.contains(it.id) }.map { it.uri }
+            }
+            Button(
+                onClick = { onMediaPicked?.invoke(selectedUris) },
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier
+                    .height(52.dp)
+                    .padding(horizontal = 24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Select (${selectedMediaIds.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
 
 @Composable
 private fun MainContentScreen(
-    activeFolder: com.chaudharyjatin115.pixelia.domain.model.MediaFolder?,
+    activeFolder: MediaFolder?,
     selectedDestination: GalleryDestination,
     viewModel: GalleryViewModel,
-    allMedia: List<com.chaudharyjatin115.pixelia.domain.model.MediaItem>,
-    groupedMedia: List<com.chaudharyjatin115.pixelia.domain.model.DateGroupedMedia>,
-    folders: List<com.chaudharyjatin115.pixelia.domain.model.MediaFolder>,
-    favorites: List<com.chaudharyjatin115.pixelia.domain.model.MediaItem>,
-    binMedia: List<com.chaudharyjatin115.pixelia.domain.model.MediaItem>,
+    allMedia: List<MediaItem>,
+    groupedMedia: List<DateGroupedMedia>,
+    folders: List<MediaFolder>,
+    favorites: List<MediaItem>,
+    binMedia: List<MediaItem>,
     isLoading: Boolean,
     isPartialAccess: Boolean,
     isSelectionMode: Boolean,
@@ -541,8 +624,19 @@ private fun MainContentScreen(
             )
 
             LaunchedEffect(selectedDestination) {
-                if (pagerState.currentPage != selectedDestination.ordinal) {
-                    pagerState.scrollToPage(selectedDestination.ordinal)
+                if (pagerState.targetPage != selectedDestination.ordinal) {
+                    val pageDiff = kotlin.math.abs(pagerState.targetPage - selectedDestination.ordinal)
+                    if (pageDiff <= 1) {
+                        pagerState.animateScrollToPage(
+                            page = selectedDestination.ordinal,
+                            animationSpec = tween(
+                                durationMillis = 280,
+                                easing = FastOutSlowInEasing
+                            )
+                        )
+                    } else {
+                        pagerState.scrollToPage(selectedDestination.ordinal)
+                    }
                 }
             }
 
