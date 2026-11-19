@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,12 +24,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -43,8 +44,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,7 +71,7 @@ fun <T> FloatingPillBar(
 
         Surface(
             modifier = Modifier
-                .widthIn(min = 180.dp, max = 500.dp)
+                .widthIn(min = 180.dp, max = 360.dp)
                 .height(56.dp),
             shape = shape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -153,16 +152,13 @@ private fun FloatingPillItem(
             .padding(vertical = 2.dp)
             .clip(CircleShape)
             .background(containerColor)
-            .clickable(
+            .selectable(
+                selected = selected,
                 interactionSource = interactionSource,
-                indication = null,
+                indication = ripple(),
+                role = if (isTabRole) Role.Tab else null,
                 onClick = onClick
-            )
-            .semantics {
-                if (isTabRole) {
-                    role = Role.Tab
-                }
-            },
+            ),
         contentAlignment = Alignment.Center
     ) {
         Row(
