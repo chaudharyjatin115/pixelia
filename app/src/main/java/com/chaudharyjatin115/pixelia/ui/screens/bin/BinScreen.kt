@@ -135,6 +135,7 @@ fun BinScreen(
                 ) { item ->
                     BinThumbnail(
                         item = item,
+                        modifier = Modifier.animateItem(),
                         onClick = { selectedItemForAction = item }
                     )
                 }
@@ -296,13 +297,14 @@ fun BinScreen(
 @Composable
 private fun BinThumbnail(
     item: MediaItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
     val itemShape = RoundedCornerShape(10.dp)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
             .clip(itemShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)

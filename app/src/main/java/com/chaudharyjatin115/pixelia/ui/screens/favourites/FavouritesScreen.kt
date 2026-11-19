@@ -92,6 +92,7 @@ fun FavouritesScreen(
                 ) { item ->
                     MediaThumbnail(
                         item = item,
+                        modifier = Modifier.animateItem(),
                         onClick = { onPhotoClick(item, favourites) }
                     )
                 }

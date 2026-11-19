@@ -368,6 +368,7 @@ fun PhotosScreen(
                             val isSelected = selectedMediaIds.contains(item.id)
                             MediaThumbnail(
                                 item = item,
+                                modifier = Modifier.animateItem(),
                                 onClick = {
                                     if (isPicker) {
                                         if (allowMultiple) {

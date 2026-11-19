@@ -1,15 +1,8 @@
 package com.chaudharyjatin115.pixelia.ui.screens.folders
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material3.ripple
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,12 +110,15 @@ enum class FolderSortOption(val displayName: String) {
 @Composable
 fun FoldersScreen(
     folders: List<MediaFolder>,
+    selectedBucketId: String? = null,
+    isSidebarMode: Boolean = false,
     onFolderClick: (MediaFolder) -> Unit,
     modifier: Modifier = Modifier
 ) {
     FoldersGridContent(
         folders = folders,
-        selectedBucketId = null,
+        selectedBucketId = selectedBucketId,
+        isSidebarMode = isSidebarMode,
         onFolderClick = onFolderClick,
         modifier = modifier
     )
@@ -133,6 +129,7 @@ fun FoldersScreen(
 private fun FoldersGridContent(
     folders: List<MediaFolder>,
     selectedBucketId: String?,
+    isSidebarMode: Boolean,
     onFolderClick: (MediaFolder) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -190,7 +187,7 @@ private fun FoldersGridContent(
         } else {
             LazyVerticalGrid(
                 state = gridState,
-                columns = GridCells.Adaptive(minSize = if (selectedBucketId != null) 120.dp else 140.dp),
+                columns = if (selectedBucketId != null) GridCells.Fixed(1) else GridCells.Adaptive(minSize = 140.dp),
                 contentPadding = PaddingValues(
                     start = 12.dp,
                     end = 12.dp,
@@ -210,6 +207,8 @@ private fun FoldersGridContent(
                     FolderGridItem(
                         folder = folder,
                         isSelected = isSelected,
+                        isSidebarMode = isSidebarMode,
+                        modifier = Modifier.animateItem(),
                         onClick = { onFolderClick(folder) }
                     )
                 }
@@ -273,126 +272,181 @@ private fun FoldersGridContent(
 private fun FolderGridItem(
     folder: MediaFolder,
     isSelected: Boolean = false,
+    isSidebarMode: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val imageShape = RoundedCornerShape(20.dp)
-
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-        label = "folder_item_scale"
-    )
+    val imageShape = RoundedCornerShape(16.dp)
 
     val itemBg = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.40f)
+        MaterialTheme.colorScheme.secondaryContainer
     } else {
         Color.Transparent
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(RoundedCornerShape(16.dp))
-            .background(itemBg)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = ripple(bounded = true, color = MaterialTheme.colorScheme.primary),
-                onClick = onClick
-            )
-            .padding(all = if (isSelected) 4.dp else 0.dp)
-            .padding(bottom = 6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(imageShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+    val textColor = if (isSelected) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val countText = if (folder.mediaCount == 1) "1 item" else "${folder.mediaCount} items"
+    val subtitleText = if (folder.totalSizeBytes > 0) {
+        "$countText • ${folder.formattedSize}"
+    } else {
+        countText
+    }
+
+    val baseModifier = modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(16.dp))
+        .background(itemBg)
+        .clickable(onClick = onClick)
+        .padding(if (isSidebarMode) 8.dp else 4.dp)
+
+    if (isSidebarMode) {
+        Row(
+            modifier = baseModifier,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (folder.coverUri != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(folder.coverUri)
-                        .size(400, 400)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = folder.bucketName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                if (folder.coverUri != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(folder.coverUri)
+                            .size(200, 200)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = folder.bucketName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = resolveFolderIcon(folder.bucketName),
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = folder.bucketName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            } else {
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textColor.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    } else {
+        Column(
+            modifier = baseModifier
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(imageShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            ) {
+                if (folder.coverUri != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(folder.coverUri)
+                            .size(400, 400)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = folder.bucketName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = resolveFolderIcon(folder.bucketName),
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = resolveFolderIcon(folder.bucketName),
                         contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
-            Box(
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Column(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
             ) {
-                Icon(
-                    imageVector = resolveFolderIcon(folder.bucketName),
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
+                Text(
+                    text = folder.bucketName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textColor.copy(alpha = 0.8f),
+                    maxLines = 2,
+                    lineHeight = 16.sp,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp)
-        ) {
-            Text(
-                text = folder.bucketName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            val countText = if (folder.mediaCount == 1) "1 item" else "${folder.mediaCount} items"
-            val subtitleText = if (folder.totalSizeBytes > 0) {
-                "$countText • ${folder.formattedSize}"
-            } else {
-                countText
-            }
-
-            Text(
-                text = subtitleText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                lineHeight = 16.sp,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
@@ -600,6 +654,7 @@ fun FolderDetailScreen(
                 val isSelected = selectedMediaIds.contains(item.id)
                 MediaThumbnail(
                     item = item,
+                    modifier = Modifier.animateItem(),
                     onClick = {
                         if (isPicker) {
                             if (allowMultiple) {
